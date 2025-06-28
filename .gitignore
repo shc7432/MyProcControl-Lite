@@ -15,12 +15,12 @@
 *.ilk
 
 # Debugger Files
-*.pdb
+# *.pdb
 
 # Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+# *.so
+# *.dylib
+# *.dll
 
 # Fortran module files
 *.mod
@@ -30,12 +30,23 @@
 *.lai
 *.la
 *.a
-*.lib
+# *.lib
 
 # Executables
-*.exe
+# *.exe
 *.out
 *.app
 
 # debug information files
 *.dwo
+
+# Others
+*.aps
+ipch
+Browse.VC.db
+FileContentIndex
+fileList.bin
+out
+dist
+CopilotIndices
+
