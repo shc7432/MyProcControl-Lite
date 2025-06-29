@@ -7,12 +7,12 @@
       "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\MyProcControlLite.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\ui_consent.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\ui_consent.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\ui_consent.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\ui_consent.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\ui_consent.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\ui_consent.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -36,36 +36,34 @@
               "RelativeDocumentMoniker": "MyProcControlLite\\MyProcControlLite.cpp",
               "ToolTip": "D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\MyProcControlLite.cpp",
               "RelativeToolTip": "MyProcControlLite\\MyProcControlLite.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAQAAAAAAAAAA==",
+              "ViewState": "AgIAAHMAAAAAAAAAAAAxwH4AAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-06-28T06:11:33.179Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "ui_consent.hpp",
               "DocumentMoniker": "D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\ui_consent.hpp",
               "RelativeDocumentMoniker": "MyProcControlLite\\ui_consent.hpp",
               "ToolTip": "D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\ui_consent.hpp",
               "RelativeToolTip": "MyProcControlLite\\ui_consent.hpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAbAAAAAAAAAA==",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAAADIAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-06-28T11:57:40.309Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-28T18:35:32.532Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "ui_consent.cpp",
               "DocumentMoniker": "D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\ui_consent.cpp",
               "RelativeDocumentMoniker": "MyProcControlLite\\ui_consent.cpp",
               "ToolTip": "D:\\software\\Program\\source\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\ui_consent.cpp",
               "RelativeToolTip": "MyProcControlLite\\ui_consent.cpp",
-              "ViewState": "AgIAABUAAAAAAAAAAAAAAAcAAABPAAAAAAAAAA==",
+              "ViewState": "AgIAAJMAAAAAAAAAAADgv5cAAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-06-28T11:48:49.826Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-28T18:38:33.831Z"
             }
           ]
         }

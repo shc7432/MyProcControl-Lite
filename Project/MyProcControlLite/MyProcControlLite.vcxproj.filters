@@ -16,19 +16,52 @@
     <Filter Include="w32oop">
       <UniqueIdentifier>{ae123044-4572-40f2-8e50-2607fb3e44d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="w32oop\lib">
+      <UniqueIdentifier>{3a5e746b-66bc-4341-9850-e46b55a7f64a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyProcControlLite.cpp">
       <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\w32oop\GUI\Window.cpp">
-      <Filter>w32oop</Filter>
     </ClCompile>
     <ClCompile Include="ui_consent.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\MyLearn\resource\tool.cpp">
       <Filter>资源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="srv.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\Concurrency\Process.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\Concurrency\Thread.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\Event\EventObject.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\GUI\Window.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\IO\File.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\IO\PipeClient.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\IO\PipeServer.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\Network\DownloadTask.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\Network\WinINetTask.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\System\Service.cpp">
+      <Filter>w32oop\lib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -40,14 +73,92 @@
     <ClInclude Include="resource.h">
       <Filter>资源文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\w32oop\GUI\Window.hpp">
-      <Filter>w32oop</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\MyLearn\resource\tool.h">
       <Filter>资源文件</Filter>
     </ClInclude>
     <ClInclude Include="ui_consent.hpp">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="srv.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Concurrency\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Concurrency\Process.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Concurrency\Thread.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Core\publicdef.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Core\version.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Core\w32def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Event\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Event\EventObject.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\GUI\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\GUI\Window.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\IO\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\IO\File.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\IO\PipeClient.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\IO\PipeServer.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Network\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Network\DownloadTask.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Network\WinINetTask.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\System\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\System\Service.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\RAII.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\converts.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\encodings.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\operations.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\w32use.hpp">
+      <Filter>w32oop</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

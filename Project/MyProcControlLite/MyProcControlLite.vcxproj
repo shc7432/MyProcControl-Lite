@@ -136,18 +136,54 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\w32oop\GUI\Window.cpp" />
     <ClCompile Include="..\..\..\MyLearn\resource\tool.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Concurrency\Process.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Concurrency\Thread.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Event\EventObject.cpp" />
+    <ClCompile Include="..\..\..\w32oop\GUI\Window.cpp" />
+    <ClCompile Include="..\..\..\w32oop\IO\File.cpp" />
+    <ClCompile Include="..\..\..\w32oop\IO\PipeClient.cpp" />
+    <ClCompile Include="..\..\..\w32oop\IO\PipeServer.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Network\DownloadTask.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Network\WinINetTask.cpp" />
+    <ClCompile Include="..\..\..\w32oop\System\Service.cpp" />
     <ClCompile Include="MyProcControlLite.cpp" />
+    <ClCompile Include="srv.cpp" />
     <ClCompile Include="ui_consent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MyProcControlUI.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\w32oop\GUI\Window.hpp" />
     <ClInclude Include="..\..\..\MyLearn\resource\tool.h" />
+    <ClInclude Include="..\..\..\w32oop\Concurrency\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Concurrency\Process.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Concurrency\Thread.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Core\publicdef.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Core\version.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Core\w32def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Event\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Event\EventObject.hpp" />
+    <ClInclude Include="..\..\..\w32oop\GUI\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\GUI\Window.hpp" />
+    <ClInclude Include="..\..\..\w32oop\IO\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\IO\File.hpp" />
+    <ClInclude Include="..\..\..\w32oop\IO\PipeClient.hpp" />
+    <ClInclude Include="..\..\..\w32oop\IO\PipeServer.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Network\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Network\DownloadTask.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Network\WinINetTask.hpp" />
+    <ClInclude Include="..\..\..\w32oop\System\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\System\Service.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\RAII.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\converts.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\encodings.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\operations.hpp" />
+    <ClInclude Include="..\..\..\w32oop\w32use.hpp" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="srv.hpp" />
     <ClInclude Include="ui_consent.hpp" />
   </ItemGroup>
   <ItemGroup>
