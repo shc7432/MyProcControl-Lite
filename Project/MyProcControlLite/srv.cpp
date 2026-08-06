@@ -2,6 +2,8 @@
 #include "srvapi.hpp"
 #include "processhelper.h"
 #include "resource.h"
+#include <Aclapi.h>
+#include <Sddl.h>
 #include <chrono>
 #include <map>
 #include <array>
@@ -139,7 +141,34 @@ void WindowsService::ServiceCoreThread() {
 	session_res = session_res / (L"{E3A082AB-4D74-49A9-9804-DA7C0570C1B4}."s + m_serviceName);
 	{
 		if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW(session_res.wstring().c_str())) {
-			if (!CreateDirectoryW(session_res.wstring().c_str(), NULL)) {
+			PSECURITY_DESCRIPTOR pSD = NULL;
+			SECURITY_ATTRIBUTES sa = { 0 };
+			sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+			sa.bInheritHandle = FALSE;
+
+			// SDDL 字符串解析：
+				// D:                 -> 声明 DACL（未加 P，开启并保留父目录继承）
+				// (A;OICI;GA;;;SY)   -> 允许 SYSTEM (SY) 完全控制 (GA)
+				// (A;OICI;GA;;;BA)   -> 允许 Administrators (BA) 完全控制 (GA)
+				// (A;OICI;GRGX;;;WD) -> 允许 Everyone (WD) 读取与执行 (GRGX)
+			if (ConvertStringSecurityDescriptorToSecurityDescriptorW(
+				L"D:(A;OICI;GA;;;SY)(A;OICI;GA;;;BA)(A;OICI;GRGX;;;WD)",
+				SDDL_REVISION_1,
+				&pSD,
+				NULL)) {
+				sa.lpSecurityDescriptor = pSD;
+			}
+
+			// 调用 CreateDirectoryW 创建文件夹
+			BOOL bCreated = CreateDirectoryW(session_res.wstring().c_str(), sa.lpSecurityDescriptor ? &sa : NULL);
+
+			// 无论创建成功与否，用完之后必须释放 pSD 占用的内存
+			if (pSD) {
+				LocalFree(pSD);
+				pSD = NULL;
+			}
+
+			if (!bCreated) {
 				m_status.dwControlsAccepted = 0;
 				m_status.dwWin32ExitCode = GetLastError();
 				ReportStatus(SERVICE_STOPPED);
@@ -166,6 +195,8 @@ void WindowsService::ServiceCoreThread() {
 			ExitProcess(m_status.dwWin32ExitCode);
 		}
 	}
+
+	ReportStatus(SERVICE_RUNNING);
 
 	// rpc server
 	m_rpcServer.Start(m_serviceName);
@@ -312,7 +343,7 @@ void WindowsService::OnStart() {
 
 	// 报告服务正在运行
 	m_isRunning = true;
-	ReportStatus(SERVICE_RUNNING);
+	ReportStatus(SERVICE_START_PENDING);
 
 	// 启动核心线程
 	m_coreThread = std::thread(&WindowsService::ServiceCoreThread, this);

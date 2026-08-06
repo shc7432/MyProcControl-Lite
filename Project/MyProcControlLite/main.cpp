@@ -162,8 +162,8 @@ int WINAPI wWinMain(
 				wstring cmdLine = L"\""s + program.get() + 
 					L"\" --type=service --name=\"" + name + L"\"";
 				Service myService = scm.create(name, cmdLine, SERVICE_AUTO_START,
-					L"Process Command and Control Server (" + name + L")",
-					L"Process Command and Control Server", SERVICE_WIN32_OWN_PROCESS);
+					L"Process Control Server (" + name + L")",
+					L"Process Control Server", SERVICE_WIN32_OWN_PROCESS);
 				if (!myService.start()) throw w32oop::exceptions::system_exception("Failed to start service.");
 
 				TaskDialog(NULL, NULL, L"MyProcControl (Lite) Setup",
