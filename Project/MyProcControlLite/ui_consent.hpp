@@ -1,6 +1,9 @@
-#pragma once
+﻿#pragma once
+#include "targetver.h"
 #include <w32use.hpp>
 using namespace std;
+
+namespace MyProcControl_Lite {
 
 class ConsentDialog : public Window
 {
@@ -47,6 +50,9 @@ private:
 		WINDOW_add_handler(WM_NCHITTEST, [this](EventData& ev) {
 			ev.returnValue(HTCAPTION);
 		});
+		WINDOW_add_handler(WM_CLOSE, [this](EventData& ev) {
+			notExited = false;
+		});
 		WINDOW_add_handler(WM_PAINT, onPaint);
 		WINDOW_add_handler(WM_SETFOCUS, onFocus);
 	}
@@ -68,4 +74,6 @@ public:
 	}
 };
 
+
+}
 

@@ -29,26 +29,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -74,7 +74,7 @@
     <OutDir>..\bin\</OutDir>
     <IntDir>..\out\$(ProjectName).$(Platform)$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)64</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);D:\software\Program\source\git\github.com\shc0743\w32oop</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)..\..\w32oop</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -101,8 +101,11 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -134,60 +137,95 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\MyLearn\resource\tool.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Concurrency\EventObject.cpp" />
     <ClCompile Include="..\..\..\w32oop\Concurrency\Process.cpp" />
     <ClCompile Include="..\..\..\w32oop\Concurrency\Thread.cpp" />
-    <ClCompile Include="..\..\..\w32oop\Event\EventObject.cpp" />
+    <ClCompile Include="..\..\..\w32oop\GUI\FoundationLib.cpp" />
+    <ClCompile Include="..\..\..\w32oop\GUI\Menu.cpp" />
+    <ClCompile Include="..\..\..\w32oop\GUI\TrayIcon.cpp" />
     <ClCompile Include="..\..\..\w32oop\GUI\Window.cpp" />
     <ClCompile Include="..\..\..\w32oop\IO\File.cpp" />
     <ClCompile Include="..\..\..\w32oop\IO\PipeClient.cpp" />
     <ClCompile Include="..\..\..\w32oop\IO\PipeServer.cpp" />
-    <ClCompile Include="..\..\..\w32oop\Network\DownloadTask.cpp" />
-    <ClCompile Include="..\..\..\w32oop\Network\WinINetTask.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Network\HttpRequest.cpp" />
+    <ClCompile Include="..\..\..\w32oop\Network\HttpResponse.cpp" />
+    <ClCompile Include="..\..\..\w32oop\System\Hooks.cpp" />
+    <ClCompile Include="..\..\..\w32oop\System\Registry.cpp" />
     <ClCompile Include="..\..\..\w32oop\System\Service.cpp" />
-    <ClCompile Include="MyProcControlLite.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="processhelper.cpp" />
+    <ClCompile Include="session_worker.cpp" />
+    <ClCompile Include="srvapi.cpp" />
+    <ClCompile Include="service_c.c" />
+    <ClCompile Include="service_s_wrapper.c" />
     <ClCompile Include="srv.cpp" />
+    <ClCompile Include="TrayIconWin.cpp" />
     <ClCompile Include="ui_consent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MyProcControlUI.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\MyLearn\resource\tool.h" />
     <ClInclude Include="..\..\..\w32oop\Concurrency\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Concurrency\EventObject.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Concurrency\Joinable.hpp" />
     <ClInclude Include="..\..\..\w32oop\Concurrency\Process.hpp" />
     <ClInclude Include="..\..\..\w32oop\Concurrency\Thread.hpp" />
     <ClInclude Include="..\..\..\w32oop\Core\publicdef.hpp" />
     <ClInclude Include="..\..\..\w32oop\Core\version.hpp" />
     <ClInclude Include="..\..\..\w32oop\Core\w32def.hpp" />
-    <ClInclude Include="..\..\..\w32oop\Event\def.hpp" />
-    <ClInclude Include="..\..\..\w32oop\Event\EventObject.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Core\w32handle.hpp" />
     <ClInclude Include="..\..\..\w32oop\GUI\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\GUI\FoundationLib.hpp" />
+    <ClInclude Include="..\..\..\w32oop\GUI\InternalMessageBox.hpp" />
+    <ClInclude Include="..\..\..\w32oop\GUI\Menu.hpp" />
+    <ClInclude Include="..\..\..\w32oop\GUI\TrayIcon.hpp" />
     <ClInclude Include="..\..\..\w32oop\GUI\Window.hpp" />
     <ClInclude Include="..\..\..\w32oop\IO\def.hpp" />
     <ClInclude Include="..\..\..\w32oop\IO\File.hpp" />
     <ClInclude Include="..\..\..\w32oop\IO\PipeClient.hpp" />
     <ClInclude Include="..\..\..\w32oop\IO\PipeServer.hpp" />
     <ClInclude Include="..\..\..\w32oop\Network\def.hpp" />
-    <ClInclude Include="..\..\..\w32oop\Network\DownloadTask.hpp" />
-    <ClInclude Include="..\..\..\w32oop\Network\WinINetTask.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Network\HttpRequest.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Network\HttpResponse.hpp" />
     <ClInclude Include="..\..\..\w32oop\System\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\System\Hooks.hpp" />
+    <ClInclude Include="..\..\..\w32oop\System\Registry.hpp" />
     <ClInclude Include="..\..\..\w32oop\System\Service.hpp" />
     <ClInclude Include="..\..\..\w32oop\Utility\def.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\ErrCheck.hpp" />
+    <ClInclude Include="..\..\..\w32oop\Utility\Memory.hpp" />
     <ClInclude Include="..\..\..\w32oop\Utility\RAII.hpp" />
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\converts.hpp" />
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\def.hpp" />
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\encodings.hpp" />
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\operations.hpp" />
     <ClInclude Include="..\..\..\w32oop\w32use.hpp" />
+    <ClInclude Include="processhelper.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="session_worker.hpp" />
+    <ClInclude Include="srvapi.hpp" />
     <ClInclude Include="srv.hpp" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="TrayIcon.hpp" />
     <ClInclude Include="ui_consent.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\bin\core.dll" />
+    <None Include="..\bin\core64.dll" />
+    <None Include="..\bin\core86.dll" />
+    <None Include="..\bin\XInjectHelper64.dll" />
+    <None Include="..\bin\XInjectHelper86.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="service.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -3,7 +3,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>../bin</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--type=consent-test</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArgumentsHistory>--type=consent-test|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
 </Project>

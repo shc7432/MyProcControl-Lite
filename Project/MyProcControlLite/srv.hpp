@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include "targetver.h"
+#include "srvapi.hpp"
 #include <windows.h>
 #include <thread>
 #include <atomic>
@@ -49,7 +51,10 @@ private:
 	SERVICE_STATUS m_status;
 	std::thread m_coreThread;
 	std::thread m_stopThread;
+	HANDLE stopEvent;
 	std::atomic<bool> m_stopRequested;
 	std::atomic<bool> m_pauseRequested;
 	std::atomic<bool> m_isRunning;
+	MyProcControl_Lite::RpcServer m_rpcServer;
+	HANDLE injector86_in, injector86_out, injector64_in, injector64_out;
 };

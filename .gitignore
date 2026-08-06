@@ -49,4 +49,6 @@ fileList.bin
 out
 dist
 CopilotIndices
+*.pdb
+*.exp
 

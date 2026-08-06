@@ -17,21 +17,30 @@
       <UniqueIdentifier>{ae123044-4572-40f2-8e50-2607fb3e44d4}</UniqueIdentifier>
     </Filter>
     <Filter Include="w32oop\lib">
-      <UniqueIdentifier>{3a5e746b-66bc-4341-9850-e46b55a7f64a}</UniqueIdentifier>
+      <UniqueIdentifier>{f2783a05-9325-4700-a1b7-df17fdcc79b7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MyProcControlLite.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="ui_consent.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\MyLearn\resource\tool.cpp">
-      <Filter>资源文件</Filter>
+    <ClCompile Include="srvapi.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="service_c.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="service_s_wrapper.c">
+      <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="srv.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\Concurrency\EventObject.cpp">
+      <Filter>w32oop\lib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\w32oop\Concurrency\Process.cpp">
       <Filter>w32oop\lib</Filter>
@@ -39,7 +48,13 @@
     <ClCompile Include="..\..\..\w32oop\Concurrency\Thread.cpp">
       <Filter>w32oop\lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\w32oop\Event\EventObject.cpp">
+    <ClCompile Include="..\..\..\w32oop\GUI\FoundationLib.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\GUI\Menu.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\GUI\TrayIcon.cpp">
       <Filter>w32oop\lib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\w32oop\GUI\Window.cpp">
@@ -54,14 +69,29 @@
     <ClCompile Include="..\..\..\w32oop\IO\PipeServer.cpp">
       <Filter>w32oop\lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\w32oop\Network\DownloadTask.cpp">
+    <ClCompile Include="..\..\..\w32oop\Network\HttpRequest.cpp">
       <Filter>w32oop\lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\w32oop\Network\WinINetTask.cpp">
+    <ClCompile Include="..\..\..\w32oop\Network\HttpResponse.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\System\Hooks.cpp">
+      <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\w32oop\System\Registry.cpp">
       <Filter>w32oop\lib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\w32oop\System\Service.cpp">
       <Filter>w32oop\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayIconWin.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="processhelper.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="session_worker.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -73,16 +103,25 @@
     <ClInclude Include="resource.h">
       <Filter>资源文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\MyLearn\resource\tool.h">
-      <Filter>资源文件</Filter>
-    </ClInclude>
     <ClInclude Include="ui_consent.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="srvapi.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="srv.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\w32use.hpp">
+      <Filter>w32oop</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\w32oop\Concurrency\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Concurrency\EventObject.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Concurrency\Joinable.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\w32oop\Concurrency\Process.hpp">
@@ -100,13 +139,22 @@
     <ClInclude Include="..\..\..\w32oop\Core\w32def.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\w32oop\Event\def.hpp">
-      <Filter>w32oop\lib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\w32oop\Event\EventObject.hpp">
+    <ClInclude Include="..\..\..\w32oop\Core\w32handle.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\w32oop\GUI\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\GUI\FoundationLib.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\GUI\InternalMessageBox.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\GUI\Menu.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\GUI\TrayIcon.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\w32oop\GUI\Window.hpp">
@@ -127,19 +175,31 @@
     <ClInclude Include="..\..\..\w32oop\Network\def.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\w32oop\Network\DownloadTask.hpp">
+    <ClInclude Include="..\..\..\w32oop\Network\HttpRequest.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\w32oop\Network\WinINetTask.hpp">
+    <ClInclude Include="..\..\..\w32oop\Network\HttpResponse.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\w32oop\System\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\System\Hooks.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\System\Registry.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\w32oop\System\Service.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\w32oop\Utility\def.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\ErrCheck.hpp">
+      <Filter>w32oop\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\w32oop\Utility\Memory.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\w32oop\Utility\RAII.hpp">
@@ -157,13 +217,41 @@
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\operations.hpp">
       <Filter>w32oop\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\w32oop\w32use.hpp">
-      <Filter>w32oop</Filter>
+    <ClInclude Include="targetver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayIcon.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="processhelper.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="session_worker.hpp">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\bin\core.dll">
+    <None Include="..\bin\core64.dll">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="..\bin\core86.dll">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\bin\XInjectHelper64.dll">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\bin\XInjectHelper86.dll">
+      <Filter>资源文件</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="service.idl">
+      <Filter>源文件</Filter>
+    </Midl>
   </ItemGroup>
 </Project>

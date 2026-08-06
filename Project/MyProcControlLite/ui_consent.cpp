@@ -1,7 +1,7 @@
 ﻿#include "ui_consent.hpp"
 using namespace std;
 
-ConsentDialog::ConsentDialog(
+MyProcControl_Lite::ConsentDialog::ConsentDialog(
 	wstring app_name, wstring operation_name, wstring details,
 	wstring allow_button_text, wstring deny_button_text,
 	bool allow_remember, int times
@@ -50,7 +50,7 @@ ConsentDialog::ConsentDialog(
 	timesLeft = times;
 }
 
-ConsentDialog::~ConsentDialog() {
+MyProcControl_Lite::ConsentDialog::~ConsentDialog() {
 	if (m_hWhiteBrush) DeleteObject(m_hWhiteBrush);
 	if (m_hTitleFont) DeleteObject(m_hTitleFont);
 	if (m_hLinePen) DeleteObject(m_hLinePen);
@@ -58,9 +58,9 @@ ConsentDialog::~ConsentDialog() {
 }
 
 
-void ConsentDialog::onCreated() {
+void MyProcControl_Lite::ConsentDialog::onCreated() {
 	add_style_ex(WS_EX_TOOLWINDOW);
-		
+	
 	operation_content.set_parent(this);
 	operation_content.create(m_constructor_data__app_name + L" wants to " + 
 		m_constructor_data__operation_name, 460, 50, 10, 50);
@@ -104,13 +104,13 @@ void ConsentDialog::onCreated() {
 	}, HotKeyOptions::Windowed);
 
 	remember_checkbox.set_parent(this);
-	remember_checkbox.create(L"[Alt+R] Remember my choice for " + m_constructor_data__app_name, 460, 20, 10, 285);
+	remember_checkbox.create(L"[Ctrl+R] Remember my choice for " + m_constructor_data__app_name, 460, 20, 10, 285);
 	remember_checkbox.onChanged([this](EventData& ev) {
 		m_remember = remember_checkbox.checked();
 	});
-	register_hot_key(false, true, false, 'R', [this](HotKeyProcData& ev) {
+	register_hot_key(true, false, false, 'R', [this](HotKeyProcData& ev) {
 		ev.preventDefault();
-        remember_checkbox.check(!remember_checkbox.checked());
+		remember_checkbox.check(!remember_checkbox.checked());
 		m_remember = remember_checkbox.checked();
 	}, HotKeyOptions::Windowed);
 
@@ -129,7 +129,7 @@ void ConsentDialog::onCreated() {
 	int x = rc.right - width - 10;
 	int y = rc.bottom - height - 10;
 
-	move(x, y);
+	move_to(x, y);
 
 	set_topmost(true);
 
@@ -155,12 +155,12 @@ void ConsentDialog::onCreated() {
 	thread([this] { force_focus(); }).detach();
 }
 
-void ConsentDialog::onDestroy()
+void MyProcControl_Lite::ConsentDialog::onDestroy()
 {
 	if (timer_thread.joinable()) timer_thread.join();
 }
 
-void ConsentDialog::onPaint(EventData& ev) {
+void MyProcControl_Lite::ConsentDialog::onPaint(EventData& ev) {
 	ev.preventDefault();
 
 	PAINTSTRUCT ps;
@@ -174,7 +174,7 @@ void ConsentDialog::onPaint(EventData& ev) {
 	HFONT hOldFont = (HFONT)SelectObject(hdc, m_hTitleFont);
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, RGB(0, 0, 0));
-	TextOut(hdc, 10, 10, L"Permission Request", 19);
+	TextOutW(hdc, 10, 10, L"Permission Request", 19);
 
 	// 3. 绘制黑色分隔线
 	HPEN hOldPen = (HPEN)SelectObject(hdc, m_hLinePen);
@@ -188,7 +188,7 @@ void ConsentDialog::onPaint(EventData& ev) {
 	EndPaint(hwnd, &ps);
 }
 
-void ConsentDialog::onFocus(EventData& ev)
+void MyProcControl_Lite::ConsentDialog::onFocus(EventData& ev)
 {
 	set_topmost(true);
 }
