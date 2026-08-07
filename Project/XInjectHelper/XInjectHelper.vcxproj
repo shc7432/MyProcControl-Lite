@@ -169,6 +169,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\w32oop\System\Service.cpp" />
     <ClCompile Include="..\lib\inject\inject.cxx" />
     <ClCompile Include="..\MyProcControlLite\processhelper.cpp" />
     <ClCompile Include="dllmain.cpp" />

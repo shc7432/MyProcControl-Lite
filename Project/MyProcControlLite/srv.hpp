@@ -5,6 +5,12 @@
 #include <thread>
 #include <atomic>
 #include <string>
+#include <chrono>
+#include <map>
+#include <array>
+#include <functional>
+#include <filesystem>
+#include <fstream>
 
 class WindowsService {
 public:
@@ -21,6 +27,9 @@ public:
 	virtual void OnStart();
 
 protected:
+	// 准备环境
+	void PrepareEnvironment();
+
 	// 服务核心线程函数
 	void ServiceCoreThread();
 
@@ -45,6 +54,8 @@ protected:
 	// 报告服务状态
 	void ReportStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode = NO_ERROR, DWORD dwWaitHint = 8000);
 
+	static DWORD WINAPI _MyCrashpadHandler(PVOID pThat);
+
 	void InjectHelperDataEater(HANDLE hPipe);
 
 private:
@@ -60,6 +71,13 @@ private:
 	std::atomic<bool> m_stopRequested;
 	std::atomic<bool> m_pauseRequested;
 	std::atomic<bool> m_isRunning;
+
+	std::shared_ptr<WCHAR[]> appPath;
+	WCHAR system32[260]{}, Temp[260]{};
+	std::filesystem::path RunDLL_X64, RunDLL_X86;
+	std::filesystem::path session_res;
+	std::wstring coredll86, coredll64, injector86, injector64;
+
 	MyProcControl_Lite::RpcServer m_rpcServer;
 	HANDLE injector86_in, injector86_out, injector64_in, injector64_out;
 };

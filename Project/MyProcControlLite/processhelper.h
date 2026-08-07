@@ -20,5 +20,5 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 
 BOOL EnableAllPrivileges(HANDLE hToken);
 
-bool FreeResFile(DWORD dwResName, const std::wstring& lpResType, const std::wstring& lpFilePathName, HMODULE hInst = nullptr);
+bool FreeResFile(DWORD dwResName, const std::wstring& lpResType, const std::wstring& lpFilePathName, HMODULE hInst = nullptr, int maxRetries = 5, DWORD retryDelayMs = 100);
 

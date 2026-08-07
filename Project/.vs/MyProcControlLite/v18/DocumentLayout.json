@@ -3,20 +3,12 @@
   "WorkspaceRootPath": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{ACF54A11-79DF-4CCF-9B61-594D3EBEC1A9}|XInjectHelper\\XInjectHelper.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\XInjectHelper\\dllmain.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{ACF54A11-79DF-4CCF-9B61-594D3EBEC1A9}|XInjectHelper\\XInjectHelper.vcxproj|solutionrelative:XInjectHelper\\dllmain.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\TrayIconWin.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\TrayIconWin.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\srv.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\srv.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -26,58 +18,33 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "dllmain.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\XInjectHelper\\dllmain.cpp",
-              "RelativeDocumentMoniker": "XInjectHelper\\dllmain.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\XInjectHelper\\dllmain.cpp",
-              "RelativeToolTip": "XInjectHelper\\dllmain.cpp",
-              "ViewState": "AgIAAJwAAAAAZGGInKouwLAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-07T18:50:14.903Z",
+              "DocumentIndex": 1,
+              "Title": "srv.hpp",
+              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.hpp",
+              "RelativeDocumentMoniker": "MyProcControlLite\\srv.hpp",
+              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.hpp",
+              "RelativeToolTip": "MyProcControlLite\\srv.hpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-08-07T20:45:10.564Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "srv.cpp",
               "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.cpp",
               "RelativeDocumentMoniker": "MyProcControlLite\\srv.cpp",
               "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.cpp",
               "RelativeToolTip": "MyProcControlLite\\srv.cpp",
-              "ViewState": "AgIAANgAAAAAAAAAAAAAAOwAAAAGAAAAAAAAAA==",
+              "ViewState": "AgIAAIIAAAAAAAAAAAASwJ0AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-07T09:59:32.924Z",
+              "WhenOpened": "2026-08-07T19:45:11.746Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "TrayIconWin.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\TrayIconWin.cpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\TrayIconWin.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\TrayIconWin.cpp",
-              "RelativeToolTip": "MyProcControlLite\\TrayIconWin.cpp",
-              "ViewState": "AgIAAGMAAAAAAAAAAAAAAHgAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-07T08:57:17.651Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "main.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\main.cpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\main.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\main.cpp",
-              "RelativeToolTip": "MyProcControlLite\\main.cpp",
-              "ViewState": "AgIAAAkAAAAAAAAAAAAAABQAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-07T08:14:48.057Z"
             }
           ]
         }

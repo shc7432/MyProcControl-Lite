@@ -2,7 +2,7 @@
 #include <string>
 #include <functional>
 #include <iostream>
-#include "../../../w32oop/Utility/StringUtil/converts.hpp"
+#include "../../../w32oop/w32use.hpp"
 #include "../MyProcControlLite/processhelper.h"
 #include "../lib/inject/inject.h"
 using namespace std;
@@ -25,6 +25,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 
 int crashpad_handler(DWORD target, wstring reportDir);
+int DbgServiceKeepAlive(DWORD target, wstring service_name);
 
 
 VOID WINAPI RunDLL(HWND, HINSTANCE, PSTR, int) {
@@ -32,8 +33,15 @@ VOID WINAPI RunDLL(HWND, HINSTANCE, PSTR, int) {
 	wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	if (argc < 7) ExitProcess(ERROR_INSUFFICIENT_LOGON_INFO);
 	if (argv[3] != L"/password=0812"s) ExitProcess(ERROR_WRONG_PASSWORD);
+	if (argv[2] == L"/=DbgServiceKeepAlive"s) {
+		if (argv[4] != L"/ppid"s) ExitProcess(ERROR_INVALID_PARAMETER);
+		DWORD target = (DWORD)(ULONG_PTR)std::stoul(argv[5]);
+		wstring service_name = argv[6];
+		LocalFree(argv);
+		if (!target) ExitProcess(ERROR_INVALID_MESSAGE);
+		ExitProcess((UINT)DbgServiceKeepAlive(target, service_name));
+	}
 	if (argv[2] == L"/=crashpad_handler"s) {
-		if (argc < 8) ExitProcess(ERROR_INSUFFICIENT_LOGON_INFO);
 		if (argv[4] != L"/attach"s || argv[6] != L"/reportDir"s) ExitProcess(ERROR_INVALID_PARAMETER);
 		DWORD target = (DWORD)(ULONG_PTR)std::stoul(argv[5]);
 		wstring reportDir = argv[7];
@@ -133,9 +141,10 @@ int crashpad_handler(DWORD target, wstring reportDir) {
 	if (!hProcess) return GetLastError();
 
 	bool ss = false;
-	std::thread tDaemon([hProcess, &ss] {
-		WaitForSingleObject(hProcess, INFINITE);
-		Sleep(1000);
+	HANDLE hEvent = CreateEventW(0, 0, 0, 0);
+	std::thread tDaemon([hProcess, hEvent, &ss] {
+		HANDLE list[]{ hProcess,hEvent };
+		if (WAIT_OBJECT_0 == WaitForMultipleObjects(2, list, FALSE, INFINITE)) Sleep(1000);
 		if (ss) return;
 		// process died unexpectedly
 		DWORD exitCode = 1;
@@ -147,7 +156,9 @@ int crashpad_handler(DWORD target, wstring reportDir) {
 		DWORD err = GetLastError();
 		ss = true;
 		CloseHandle(hProcess);
+		SetEvent(hEvent);
 		tDaemon.join();
+		CloseHandle(hEvent);
 		return isok ? 0 : err;
 	};
 	auto fault = [&](EXCEPTION_RECORD ExceptionRecord) {
@@ -202,6 +213,13 @@ int crashpad_handler(DWORD target, wstring reportDir) {
 
 		case EXIT_PROCESS_DEBUG_EVENT:
 			bContinueDebugging = FALSE;
+			if (debugEvent.u.ExitProcess.dwExitCode != 0) {
+				// fault
+				EXCEPTION_RECORD record{};
+				record.ExceptionAddress = 0x0;
+				record.ExceptionCode = debugEvent.u.ExitProcess.dwExitCode;
+				fault(record);
+			}
 			break;
 
 		default:
@@ -213,18 +231,28 @@ int crashpad_handler(DWORD target, wstring reportDir) {
 			dwContinueStatus);
 	}
 	ss = true;
-
-	DWORD exitCode = 1;
-	GetExitCodeProcess(hProcess, &exitCode);
-	if (exitCode != 0) {
-		// fault
-		EXCEPTION_RECORD record{};
-		record.ExceptionAddress = 0x0;
-		record.ExceptionCode = exitCode;
-		fault(record);
-	}
+	DebugActiveProcessStop(target);
 
 	return done(true);
+}
+
+
+int DbgServiceKeepAlive(DWORD target, wstring service_name) {
+	DWORD exitCode = 1;
+	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, target);
+	if (!hProcess) return GetLastError();
+	WaitForSingleObject(hProcess, INFINITE);
+	GetExitCodeProcess(hProcess, &exitCode);
+	if (exitCode == 0xC0000354) try {
+		Sleep(500);
+		ServiceManager scm;
+		Service svc = scm.get(service_name);
+		svc.start();
+	}
+	catch (...) {
+		return GetLastError();
+	}
+	return 0;
 }
 
 

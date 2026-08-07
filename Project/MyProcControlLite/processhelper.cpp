@@ -18,10 +18,10 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 	_Out_ LPPROCESS_INFORMATION lpProcessInformation,
 	_In_ BOOL uiaccess
 ) {
-	auto& si = *lpStartupInfo;         // 
-	//auto& pi = *lpProcessInformation;  // 
-	//HANDLE hUserToken = NULL;          // 当前登录用户的令牌  
-	HANDLE hUserTokenDup = NULL;       // 复制的用户令牌  
+	auto& si = *lpStartupInfo;         //
+	//auto& pi = *lpProcessInformation;  //
+	//HANDLE hUserToken = NULL;          // 当前登录用户的令牌
+	HANDLE hUserTokenDup = NULL;       // 复制的用户令牌
 	HANDLE hPToken = NULL;             // 进程令牌
 
 	//// 不需要获取用户token,子进程以父进程权限运行
@@ -30,9 +30,9 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 
 	WCHAR lpDesktop[] = L"winsta0\\default";
 	si.lpDesktop = lpDesktop;
-	//指定创建进程的窗口站，Windows下唯一可交互的窗口站就是WinSta0\Default  
+	//指定创建进程的窗口站，Windows下唯一可交互的窗口站就是WinSta0\Default
 
-	//打开进程令牌  
+	//打开进程令牌
 	if (!OpenProcessToken(GetCurrentProcess(),
 		TOKEN_ADJUST_PRIVILEGES |
 		TOKEN_QUERY | TOKEN_DUPLICATE |
@@ -42,14 +42,14 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 		return FALSE;
 	}
 
-	//复制当前用户的令牌  
+	//复制当前用户的令牌
 	if (!DuplicateTokenEx(hPToken, MAXIMUM_ALLOWED, NULL,
 		SecurityIdentification, TokenPrimary, &hUserTokenDup)) {
 		CloseHandle(hPToken);
 		return FALSE;
 	}
 
-	//设置当前进程的令牌信息  
+	//设置当前进程的令牌信息
 	if (!SetTokenInformation(hUserTokenDup, TokenSessionId,
 		(void*)&dwSessionId, sizeof(DWORD))) {
 		CloseHandle(hUserTokenDup);
@@ -67,13 +67,13 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 		}
 	}
 
-	//创建进程环境块，保证环境块是在用户桌面的环境下  
+	//创建进程环境块，保证环境块是在用户桌面的环境下
 	LPVOID pEnv = NULL;
 	if (CreateEnvironmentBlock(&pEnv, hUserTokenDup, TRUE)) {
 		dwCreationFlags |= CREATE_UNICODE_ENVIRONMENT;
 	}
 
-	//创建用户进程  
+	//创建用户进程
 	if (!CreateProcessAsUser(hUserTokenDup, lpApplicationName, lpCommandLine,
 		lpProcessAttributes, lpThreadAttributes, bInheritHandles,
 		dwCreationFlags, lpEnvironment ? lpEnvironment : pEnv,
@@ -147,7 +147,7 @@ cleanup:
 	return bResult;
 }
 
-bool FreeResFile(DWORD dwResName, const std::wstring& lpResType, const std::wstring& lpFilePathName, HMODULE hInst) {
+bool FreeResFile(DWORD dwResName, const std::wstring& lpResType, const std::wstring& lpFilePathName, HMODULE hInst, int maxRetries, DWORD retryDelayMs) {
 	// 获取模块句柄
 	HMODULE hInstance = hInst ? hInst : GetModuleHandleW(nullptr);
 
@@ -165,30 +165,69 @@ bool FreeResFile(DWORD dwResName, const std::wstring& lpResType, const std::wstr
 	DWORD dwSize = SizeofResource(hInstance, hResInfo);
 	if (dwSize == 0) return false;
 
-	// 创建目标文件（RAII 管理句柄）
-	HANDLE hFile = CreateFileW(
+	// 先尝试打开磁盘上的现有文件，比较内容是否一致
+	// 如果完全一致则跳过写出，节省磁盘写入寿命
+	HANDLE hExistingFile = CreateFileW(
 		lpFilePathName.c_str(),
-		GENERIC_WRITE,
-		0,
+		GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		nullptr,
-		CREATE_ALWAYS,
+		OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL,
 		nullptr
 	);
-	if (hFile == INVALID_HANDLE_VALUE) return false;
+	if (hExistingFile != INVALID_HANDLE_VALUE) {
+		bool bIdentical = false;
+		DWORD dwFileSize = GetFileSize(hExistingFile, nullptr);
+		if (dwFileSize == dwSize) {
+			// 大小相同，进一步比较内容
+			std::unique_ptr<BYTE[]> pFileData(new (std::nothrow) BYTE[dwSize]);
+			if (pFileData) {
+				DWORD dwRead = 0;
+				if (ReadFile(hExistingFile, pFileData.get(), dwSize, &dwRead, nullptr) && dwRead == dwSize) {
+					if (memcmp(pRes, pFileData.get(), dwSize) == 0) {
+						bIdentical = true;
+					}
+				}
+			}
+		}
+		CloseHandle(hExistingFile);
+		if (bIdentical) {
+			return true; // 文件内容完全一致，无需写出
+		}
+	}
 
-	// 自定义删除器，确保句柄关闭
-	struct HandleDeleter {
-		void operator()(HANDLE h) const { if (h && h != INVALID_HANDLE_VALUE) CloseHandle(h); }
-	};
-	std::unique_ptr<void, HandleDeleter> fileGuard(hFile);
+	// 文件不存在或内容不同，需要写出到磁盘
 
-	// 写入文件
-	DWORD dwWritten = 0;
-	if (!WriteFile(hFile, pRes, dwSize, &dwWritten, nullptr))
-		return false;
-
-	return (dwSize == dwWritten);
+	for (int retry = 0; retry < maxRetries; ++retry) {
+		HANDLE hFile = CreateFileW(
+			lpFilePathName.c_str(),
+			GENERIC_WRITE,
+			0,
+			nullptr,
+			CREATE_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL,
+			nullptr
+		);
+		if (hFile != INVALID_HANDLE_VALUE) {
+			DWORD dwWritten = 0, dwErr = 0;
+			BOOL bWriteOk = WriteFile(hFile, pRes, dwSize, &dwWritten, nullptr);
+			if (!bWriteOk) dwErr = GetLastError();
+			CloseHandle(hFile);
+			if (bWriteOk && dwSize == dwWritten) {
+				return true;
+			}
+			if (dwErr == ERROR_SHARING_VIOLATION) {
+				if (retry < maxRetries - 1) {
+					Sleep(retryDelayMs);
+					continue;
+				}
+			}
+			return false;
+		}
+		DWORD dwErr = GetLastError();
+		if (dwErr != ERROR_SHARING_VIOLATION) return false;
+		if (retry < maxRetries - 1) Sleep(retryDelayMs);
+	}
+	return false;
 }
-
-

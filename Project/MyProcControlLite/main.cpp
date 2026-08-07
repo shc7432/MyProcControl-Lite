@@ -164,13 +164,19 @@ int WINAPI wWinMain(
 				catch (w32oop::exceptions::system_exception& exc) {
 					if (!dynamic_cast<invalid_scm_handle_exception*>(&exc)) throw;
 				}
+				w32ServiceHandle scm = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
 				auto program = make_unique<WCHAR[]>(32768);
 				GetModuleFileNameW(NULL, program.get(), 32768);
 				wstring cmdLine = L"\""s + program.get() + 
 					L"\" --type=service --name=\"" + name + L"\"";
-				Service myService = scm.create(name, cmdLine, SERVICE_AUTO_START,
-					L"Process Control Server (" + name + L")",
-					L"Process Control Server", SERVICE_WIN32_OWN_PROCESS);
+				Service myService = w32ServiceHandle(CreateServiceW(scm, name.c_str(),
+					(L"Process Control Server (" + name + L")").c_str(),
+					SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
+					cmdLine.c_str(), NULL, NULL, L"RpcSs\0DcomLaunch\0LSM\0ProfSvc\0UserManager\0", NULL, NULL));
+				SERVICE_DESCRIPTIONW a{};
+				WCHAR desc[] = L"Process Control Server";
+				a.lpDescription = desc;
+				ChangeServiceConfig2W(myService, SERVICE_CONFIG_DESCRIPTION, &a);
 				if (!myService.start()) throw w32oop::exceptions::system_exception("Failed to start service.");
 
 				TaskDialog(NULL, NULL, L"MyProcControl (Lite) Setup",
