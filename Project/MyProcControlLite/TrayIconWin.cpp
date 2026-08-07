@@ -128,5 +128,5 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 
 HICON MyProcControl_Lite::UIService::TrayIconWindow::myicon() {
 	if (app_icon) return app_icon;
-	return app_icon = LoadIconW(hInst, MAKEINTRESOURCEW(IDI_ICON1));
+	return app_icon = LoadIconW(hInst, MAKEINTRESOURCEW(IDI_ICON_APP));
 }

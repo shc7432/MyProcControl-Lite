@@ -14,6 +14,13 @@ name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib")
 
+#ifndef _WIN64
+#ifdef _WIN32
+#error X86 Not supported!!
+#endif // _WIN32
+#endif // !_WIN64
+
+
 HINSTANCE hInst;
 
 int WINAPI wWinMain(

@@ -1,4 +1,4 @@
-#include "inject.h"
+﻿#include "inject.h"
 
 HMODULE InjectDllToProcess(DWORD dwProcessId, LPCWSTR szDllPath, DWORD dwTimeout) {
 	HANDLE hProcess = NULL; // the handle of the target process
@@ -20,9 +20,19 @@ HMODULE InjectDllToProcess_HANDLE(HANDLE hProcess, LPCWSTR szDllPath, DWORD dwTi
 	// Note: the address of [ntdll,user32,kernel32] is same for all processes
 	HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
 	if (!kernel32) return NULL;
+	auto GetProcAddress = reinterpret_cast<decltype(&::GetProcAddress)>(::GetProcAddress(kernel32, "GetProcAddress"));
+	if (!GetProcAddress) return NULL;
 	LPTHREAD_START_ROUTINE pLoadLibraryW = (LPTHREAD_START_ROUTINE)
 		GetProcAddress(kernel32, "LoadLibraryW");
 	if (!pLoadLibraryW) return NULL;
+	auto VirtualAllocEx = reinterpret_cast<decltype(&::VirtualAllocEx)>(GetProcAddress(kernel32, "VirtualAllocEx"));
+	if (!VirtualAllocEx) return NULL;
+	auto WriteProcessMemory = reinterpret_cast<decltype(&::WriteProcessMemory)>(GetProcAddress(kernel32, "WriteProcessMemory"));
+	if (!WriteProcessMemory) return NULL;
+	auto VirtualFreeEx = reinterpret_cast<decltype(&::VirtualFreeEx)>(GetProcAddress(kernel32, "VirtualFreeEx"));
+	if (!VirtualFreeEx) return NULL;
+	auto CreateRemoteThread = reinterpret_cast<decltype(&::CreateRemoteThread)>(GetProcAddress(kernel32, "CreateRemoteThread"));
+	if (!CreateRemoteThread) return NULL;
 
 	// Alloc memory for the process to write dll path
 	SIZE_T pPathSize = wcslen(szDllPath) * 2;
@@ -67,6 +77,7 @@ HMODULE InjectDllToProcess_HANDLE(HANDLE hProcess, LPCWSTR szDllPath, DWORD dwTi
 	return hModuleRemoteDll;
 }
 
+#if 0
 DWORD InjectCodeToProcess(
 	HANDLE hProcess, PVOID pCodeAddress, SIZE_T size, PVOID paramter, DWORD dwTimeout
 ) {
@@ -107,6 +118,7 @@ DWORD InjectCodeToProcess(
 	return ret_value;
 	return (DWORD)-1;
 }
+#endif
 
 
 #if 0

@@ -18,7 +18,7 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\inject\inject.c">
+    <ClCompile Include="..\lib\inject\inject.cxx">
       <Filter>资源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\MyProcControlLite\processhelper.cpp">

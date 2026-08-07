@@ -45,6 +45,8 @@ protected:
 	// 报告服务状态
 	void ReportStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode = NO_ERROR, DWORD dwWaitHint = 8000);
 
+	void InjectHelperDataEater(HANDLE hPipe);
+
 private:
 	std::wstring m_serviceName;
 	SERVICE_STATUS_HANDLE m_statusHandle;

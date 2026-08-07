@@ -1,14 +1,10 @@
-#pragma once
+﻿#pragma once
 #ifndef _WIN32
 #error This is a inject header FOR WINDOWS
 #endif
 // Windows headers
 #ifndef _WINDOWS_
 #include<Windows.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 /**
@@ -39,6 +35,7 @@ HMODULE InjectDllToProcess_HANDLE(HANDLE hProcess, LPCWSTR szDllPath, DWORD dwTi
 #endif
 );
 
+#if 0
 /**
 @brief Inject shellcode into a process (Unicode)
 @param hProcess The process handle to inject.
@@ -53,6 +50,7 @@ DWORD InjectCodeToProcess(
 	= INFINITE
 #endif
 );
+#endif
 
 #if 0
 @trashed
@@ -65,8 +63,4 @@ DWORD InjectCodeToProcess(
 	FARPROC GetRemoteProcAddress(DWORD dwProcessId, HMODULE hModule, LPCSTR lpProcName);
 #endif
 
-
-#ifdef __cplusplus
-}
-#endif
 

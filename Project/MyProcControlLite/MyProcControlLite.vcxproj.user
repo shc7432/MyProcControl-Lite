@@ -6,4 +6,9 @@
     <LocalDebuggerCommandArguments>--type=consent-test</LocalDebuggerCommandArguments>
     <LocalDebuggerCommandArgumentsHistory>--type=consent-test|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LocalDebuggerCommandArguments>--type=consent-test</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArgumentsHistory>--type=consent-test|</LocalDebuggerCommandArgumentsHistory>
+  </PropertyGroup>
 </Project>
