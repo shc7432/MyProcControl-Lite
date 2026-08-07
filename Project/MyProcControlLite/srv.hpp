@@ -48,6 +48,9 @@ protected:
 	void InjectHelperDataEater(HANDLE hPipe);
 
 private:
+	void __crash(DWORD reason = (DWORD)-1);
+
+private:
 	std::wstring m_serviceName;
 	SERVICE_STATUS_HANDLE m_statusHandle;
 	SERVICE_STATUS m_status;

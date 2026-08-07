@@ -219,6 +219,25 @@ void WindowsService::ReportStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, D
 	SetServiceStatus(m_statusHandle, &m_status);
 }
 
+void WindowsService::__crash(DWORD reason) {
+	if (reason == (DWORD)-1) reason = GetLastError();
+	EXCEPTION_RECORD rec{}; CONTEXT ctx{};
+	RtlCaptureContext(&ctx);
+	rec.ExceptionCode = reason;
+	rec.ExceptionAddress = _ReturnAddress();
+	rec.ExceptionFlags = EXCEPTION_NONCONTINUABLE;
+	RaiseFailFastException(&rec, &ctx, 0);
+	__fastfail(FAST_FAIL_STACK_COOKIE_CHECK_FAILURE);
+	ExitProcess((UINT)reason);
+	TerminateProcess(GetCurrentProcess(), (UINT)reason);
+	RtlRaiseException(&rec);
+	terminate();
+	abort();
+	exit((int)reason);
+	while (1) { __fastfail(FAST_FAIL_STACK_COOKIE_CHECK_FAILURE); }
+	return ((void(*)())0x0)();
+}
+
 // 计算机关机
 void WindowsService::OnShutdown() {
 	ReportStatus(SERVICE_STOPPED);
@@ -328,6 +347,21 @@ void WindowsService::ServiceCoreThread() {
 	// rpc server
 	m_rpcServer.Start(m_serviceName);
 
+	// crashpad handler
+	if (!IsDebuggerPresent()) {
+		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+		wstring cmd = L"RunDLL32 \"" + injector64 + L"\",RunDLL /=crashpad_handler /password=0812 /attach " +
+			to_wstring(GetCurrentProcessId()) + L" /reportDir \"" + session_res.wstring() + L"\"";
+		if (CreateProcessW(RunDLL_X64.wstring().c_str(), cmd.data(), NULL, NULL, FALSE,
+			CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB | BELOW_NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi)) {
+			CloseHandle(pi.hThread);
+			CloseHandle(pi.hProcess);
+		}
+		else {
+			// TODO: Log error (non-fatal)
+		}
+	}
+
 	std::thread Helperx86, Helperx64;
 
 	while (!m_stopRequested) {
@@ -348,13 +382,15 @@ void WindowsService::ServiceCoreThread() {
 			}
 			for (auto& i : need_delete) sessionProcesses.erase(i);
 
+			// FIXME: This can only get console session info; if RD connection is active this might fail.
+			// consider refactor to RegisterServiceCtrlHandlerExW and handle SERVICE_CONTROL_SESSIONCHANGE
 			DWORD activeUser = WTSGetActiveConsoleSessionId();
-			if (!sessionProcesses.contains(activeUser) && activeUser != 0) do {
+			if (!sessionProcesses.contains(activeUser) && activeUser != 0 && activeUser != 0xFFFFFFFF) do {
 				// launch a worker in this session
 				wstring cmd = L"workerw --type=session-worker --name=\"" + m_serviceName + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
 				STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
 				if (!CreateProcessInSession(activeUser, appPath.get(), cmd.data(),
-					NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi, true)) {
+					NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
 					sessionProcesses.insert(make_pair(activeUser, nullptr));
 					// TODO: log the error
 					break;
@@ -410,7 +446,7 @@ void WindowsService::ServiceCoreThread() {
 			InjectHelperProcess[index] = pi.hProcess;
 			auto& helper = isX86 ? Helperx86 : Helperx64;
 			if (helper.joinable()) helper.join();
-			helper = std::thread([this](HANDLE hFile) {return this->InjectHelperDataEater(hFile); }, injector_out);
+			helper = std::thread([this](HANDLE hFile) { return this->InjectHelperDataEater(hFile); }, injector_out);
 			ResumeThread(pi.hThread);
 			CloseHandle(pi.hThread);
 		}
@@ -443,3 +479,5 @@ void WindowsService::InjectHelperDataEater(HANDLE hPipe) {
 		// TODO: Post event to main thread
 	}
 }
+
+

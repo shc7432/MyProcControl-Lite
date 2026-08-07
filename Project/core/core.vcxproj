@@ -73,12 +73,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(SolutionDir)\lib\detours\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)\lib\detours\lib.X64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
-    <OutDir>..\bin\</OutDir>
+    <OutDir>..\dllcache\</OutDir>
     <IntDir>..\out\$(ProjectName).$(Platform)$(Configuration)\</IntDir>
     <TargetName>core64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>..\bin\</OutDir>
+    <OutDir>..\dllcache\</OutDir>
     <IntDir>..\out\$(ProjectName).$(Platform)$(Configuration)\</IntDir>
     <TargetName>core86</TargetName>
     <IncludePath>$(SolutionDir)\lib\detours\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
