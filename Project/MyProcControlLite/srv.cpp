@@ -5,6 +5,7 @@
 #include <w32use.hpp>
 #include <Aclapi.h>
 #include <Sddl.h>
+#include <wtsapi32.h>
 using namespace std;
 
 WindowsService* gInstance = nullptr;
@@ -482,7 +483,7 @@ void WindowsService::ServiceCoreThread() {
 		for (auto& i : InjectHelperProcess) if (i) waitObjects.push_back(i);
 
 		// user detector
-		{
+		do {
 			vector<DWORD> need_delete;
 			for (auto& i : sessionProcesses) {
 				if (i.second && WaitForSingleObject(i.second, 0) == WAIT_OBJECT_0) {
@@ -493,26 +494,40 @@ void WindowsService::ServiceCoreThread() {
 			}
 			for (auto& i : need_delete) sessionProcesses.erase(i);
 
-			// FIXME: This can only get console session info; if RD connection is active this might fail.
-			// consider refactor to RegisterServiceCtrlHandlerExW and handle SERVICE_CONTROL_SESSIONCHANGE
-			DWORD activeUser = WTSGetActiveConsoleSessionId();
-			if (!sessionProcesses.contains(activeUser) && activeUser != 0 && activeUser != 0xFFFFFFFF) do {
+			PWTS_SESSION_INFOW pWtsSessionInfo{}; DWORD c{};
+			if (!WTSEnumerateSessionsW(WTS_CURRENT_SERVER_HANDLE, 0, 1, &pWtsSessionInfo, &c)) {
+				for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
+				break;
+			}
+
+			//DWORD activeUser = WTSGetActiveConsoleSessionId();
+			//if (!sessionProcesses.contains(activeUser) && activeUser != 0 && activeUser != 0xFFFFFFFF) 
+			for (DWORD dwI = 0; dwI < c; ++dwI) {
+				PWSTR pWtsUserName{}; DWORD dwSize{};
+				if (!WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, pWtsSessionInfo[dwI].SessionId,
+					WTSUserName, &pWtsUserName, &dwSize)) continue;
+				wstring user = pWtsUserName;
+				WTSFreeMemory(pWtsUserName);
+				if (user.empty()) continue;
+				if (sessionProcesses.contains(dwI)) continue;
 				// launch a worker in this session
 				wstring cmd = L"workerw --type=session-worker --name=\"" + m_serviceName + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
 				STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-				if (!CreateProcessInSession(activeUser, appPath.get(), cmd.data(),
+				if (!CreateProcessInSession(pWtsSessionInfo[dwI].SessionId, appPath.get(), cmd.data(),
 					NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
-					sessionProcesses.insert(make_pair(activeUser, nullptr));
+					sessionProcesses.insert(make_pair(pWtsSessionInfo[dwI].SessionId, nullptr));
 					// TODO: log the error
 					break;
 				}
-				sessionProcesses.insert(make_pair(activeUser, pi.hProcess));
+				sessionProcesses.insert(make_pair(pWtsSessionInfo[dwI].SessionId, pi.hProcess));
 				ResumeThread(pi.hThread);
 				CloseHandle(pi.hThread);
-			} while (0);
+			}
+
+			WTSFreeMemory(pWtsSessionInfo);
 
 			for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
-		}
+		} while (0);
 
 		// wait
 		waitObjects.push_back(stopEvent);
