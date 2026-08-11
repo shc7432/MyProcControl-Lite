@@ -32,7 +32,7 @@
 #include "service_h.h"
 
 #define TYPE_FORMAT_STRING_SIZE   11                                
-#define PROC_FORMAT_STRING_SIZE   55                                
+#define PROC_FORMAT_STRING_SIZE   61                                
 #define EXPR_FORMAT_STRING_SIZE   1                                 
 #define TRANSMIT_AS_TABLE_SIZE    0            
 #define WIRE_MARSHAL_TABLE_SIZE   0            
@@ -160,7 +160,8 @@ int MyProcControlLite_LaunchWithControl(
     /* [in] */ handle_t IDL_handle,
     /* [string][in] */ const wchar_t *application,
     /* [string][in] */ const wchar_t *cmdline,
-    /* [out] */ int *bSuccess)
+    /* [out] */ int *bSuccess,
+    /* [out] */ unsigned long *error)
 {
 
     CLIENT_CALL_RETURN _RetVal;
@@ -172,7 +173,8 @@ int MyProcControlLite_LaunchWithControl(
                   IDL_handle,
                   application,
                   cmdline,
-                  bSuccess);
+                  bSuccess,
+                  error);
     return ( int  )_RetVal.Simple;
     
 }
@@ -193,14 +195,14 @@ static const service_MIDL_PROC_FORMAT_STRING service__MIDL_ProcFormatString =
 			0x48,		/* Old Flags:  */
 /*  2 */	NdrFcLong( 0x0 ),	/* 0 */
 /*  6 */	NdrFcShort( 0x0 ),	/* 0 */
-/*  8 */	NdrFcShort( 0x28 ),	/* X64 Stack size/offset = 40 */
+/*  8 */	NdrFcShort( 0x30 ),	/* X64 Stack size/offset = 48 */
 /* 10 */	0x32,		/* FC_BIND_PRIMITIVE */
 			0x0,		/* 0 */
 /* 12 */	NdrFcShort( 0x0 ),	/* X64 Stack size/offset = 0 */
 /* 14 */	NdrFcShort( 0x0 ),	/* 0 */
-/* 16 */	NdrFcShort( 0x24 ),	/* 36 */
+/* 16 */	NdrFcShort( 0x40 ),	/* 64 */
 /* 18 */	0x46,		/* Oi2 Flags:  clt must size, has return, has ext, */
-			0x4,		/* 4 */
+			0x5,		/* 5 */
 /* 20 */	0xa,		/* 10 */
 			0x1,		/* Ext Flags:  new corr desc, */
 /* 22 */	NdrFcShort( 0x0 ),	/* 0 */
@@ -227,11 +229,18 @@ static const service_MIDL_PROC_FORMAT_STRING service__MIDL_ProcFormatString =
 /* 46 */	0x8,		/* FC_LONG */
 			0x0,		/* 0 */
 
-	/* Return value */
+	/* Parameter error */
 
-/* 48 */	NdrFcShort( 0x70 ),	/* Flags:  out, return, base type, */
+/* 48 */	NdrFcShort( 0x2150 ),	/* Flags:  out, base type, simple ref, srv alloc size=8 */
 /* 50 */	NdrFcShort( 0x20 ),	/* X64 Stack size/offset = 32 */
 /* 52 */	0x8,		/* FC_LONG */
+			0x0,		/* 0 */
+
+	/* Return value */
+
+/* 54 */	NdrFcShort( 0x70 ),	/* Flags:  out, return, base type, */
+/* 56 */	NdrFcShort( 0x28 ),	/* X64 Stack size/offset = 40 */
+/* 58 */	0x8,		/* FC_LONG */
 			0x0,		/* 0 */
 
 			0x0
@@ -303,13 +312,13 @@ namespace {
 
 typedef 
 NDR64_FORMAT_CHAR
-__midl_frag9_t;
-extern const __midl_frag9_t __midl_frag9;
+__midl_frag11_t;
+extern const __midl_frag11_t __midl_frag11;
 
 typedef 
 struct _NDR64_POINTER_FORMAT
-__midl_frag7_t;
-extern const __midl_frag7_t __midl_frag7;
+__midl_frag9_t;
+extern const __midl_frag9_t __midl_frag9;
 
 typedef 
 struct _NDR64_CONFORMANT_STRING_FORMAT
@@ -330,6 +339,7 @@ struct
     struct _NDR64_PARAM_FORMAT frag4;
     struct _NDR64_PARAM_FORMAT frag5;
     struct _NDR64_PARAM_FORMAT frag6;
+    struct _NDR64_PARAM_FORMAT frag7;
 }
 __midl_frag2_t;
 extern const __midl_frag2_t __midl_frag2;
@@ -339,16 +349,16 @@ NDR64_FORMAT_UINT32
 __midl_frag1_t;
 extern const __midl_frag1_t __midl_frag1;
 
-static const __midl_frag9_t __midl_frag9 =
+static const __midl_frag11_t __midl_frag11 =
 0x5    /* FC64_INT32 */;
 
-static const __midl_frag7_t __midl_frag7 =
+static const __midl_frag9_t __midl_frag9 =
 { 
-/* *int */
+/* *long */
     0x20,    /* FC64_RP */
     (NDR64_UINT8) 12 /* 0xc */,
     (NDR64_UINT16) 0 /* 0x0 */,
-    &__midl_frag9
+    &__midl_frag11
 };
 
 static const __midl_frag6_t __midl_frag6 =
@@ -387,12 +397,12 @@ static const __midl_frag2_t __midl_frag2 =
     { 
     /* MyProcControlLite_LaunchWithControl */      /* procedure MyProcControlLite_LaunchWithControl */
         (NDR64_UINT32) 17563712 /* 0x10c0040 */,    /* explicit handle */ /* IsIntrepreted, ClientMustSize, HasReturn, HasExtensions */
-        (NDR64_UINT32) 40 /* 0x28 */ ,  /* Stack size */
+        (NDR64_UINT32) 48 /* 0x30 */ ,  /* Stack size */
         (NDR64_UINT32) 0 /* 0x0 */,
-        (NDR64_UINT32) 40 /* 0x28 */,
+        (NDR64_UINT32) 72 /* 0x48 */,
         (NDR64_UINT16) 0 /* 0x0 */,
         (NDR64_UINT16) 0 /* 0x0 */,
-        (NDR64_UINT16) 4 /* 0x4 */,
+        (NDR64_UINT16) 5 /* 0x5 */,
         (NDR64_UINT16) 8 /* 0x8 */
     },
     { 
@@ -457,7 +467,7 @@ static const __midl_frag2_t __midl_frag2 =
     },
     { 
     /* bSuccess */      /* parameter bSuccess */
-        &__midl_frag9,
+        &__midl_frag11,
         { 
         /* bSuccess */
             0,
@@ -480,8 +490,32 @@ static const __midl_frag2_t __midl_frag2 =
         24 /* 0x18 */,   /* Stack offset */
     },
     { 
+    /* error */      /* parameter error */
+        &__midl_frag11,
+        { 
+        /* error */
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            (NDR64_UINT16) 0 /* 0x0 */,
+            1
+        },    /* [out], Basetype, SimpleRef, UseCache */
+        (NDR64_UINT16) 0 /* 0x0 */,
+        32 /* 0x20 */,   /* Stack offset */
+    },
+    { 
     /* int */      /* parameter int */
-        &__midl_frag9,
+        &__midl_frag11,
         { 
         /* int */
             0,
@@ -501,7 +535,7 @@ static const __midl_frag2_t __midl_frag2 =
             0
         },    /* [out], IsReturn, Basetype, ByValue */
         (NDR64_UINT16) 0 /* 0x0 */,
-        32 /* 0x20 */,   /* Stack offset */
+        40 /* 0x28 */,   /* Stack offset */
     }
 };
 

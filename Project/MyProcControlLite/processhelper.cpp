@@ -3,6 +3,14 @@
 #pragma comment(lib, "Userenv.lib")
 using namespace std;
 
+FARPROC app::GetProcAddress(HMODULE hModule, PCSTR name) {
+	static HMODULE k32 = GetModuleHandleW(L"kernel32.dll");
+	if (!k32) __fastfail(FAST_FAIL_STACK_COOKIE_CHECK_FAILURE);
+	static auto GetProcAddress = reinterpret_cast<decltype(&::GetProcAddress)>(::GetProcAddress(k32, "GetProcAddress"));
+	if (!GetProcAddress) __fastfail(FAST_FAIL_STACK_COOKIE_CHECK_FAILURE);
+	return GetProcAddress(hModule, name);
+}
+
 #pragma warning(push)
 #pragma warning(disable: 6101)
 BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
@@ -231,3 +239,21 @@ bool FreeResFile(DWORD dwResName, const std::wstring& lpResType, const std::wstr
 	}
 	return false;
 }
+
+static NTSTATUS _InternalSuspendProcess(HANDLE ProcessHandle, PCSTR func) {
+	static HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+	if (!ntdll) return STATUS_DLL_NOT_FOUND;
+	typedef NTSTATUS(NTAPI*F)(HANDLE ProcessHandle);
+	F f = (F)app::GetProcAddress(ntdll, func);
+	if (!f) return STATUS_DLL_INIT_FAILED;
+	return f(ProcessHandle);
+}
+
+NTSTATUS app::SuspendProcess(_In_ HANDLE ProcessHandle) {
+	return _InternalSuspendProcess(ProcessHandle, "NtSuspendProcess");
+}
+
+NTSTATUS app::ResumeProcess(_In_ HANDLE ProcessHandle) {
+	return _InternalSuspendProcess(ProcessHandle, "NtResumeProcess");
+}
+

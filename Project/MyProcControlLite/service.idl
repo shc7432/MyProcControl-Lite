@@ -4,5 +4,5 @@
 ]
 interface IServiceRpc
 {
-	int MyProcControlLite_LaunchWithControl([in, string] const wchar_t* application, [in, string] const wchar_t* cmdline, [out] int* bSuccess);
+	int MyProcControlLite_LaunchWithControl([in, string] const wchar_t* application, [in, string] const wchar_t* cmdline, [out] int* bSuccess, [out] unsigned long* error);
 }

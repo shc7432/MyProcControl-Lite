@@ -168,8 +168,11 @@
     <ClCompile Include="..\..\..\w32oop\System\Hooks.cpp" />
     <ClCompile Include="..\..\..\w32oop\System\Registry.cpp" />
     <ClCompile Include="..\..\..\w32oop\System\Service.cpp" />
+    <ClCompile Include="data_poller.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="processhelper.cpp" />
+    <ClCompile Include="push_data_runner.cpp" />
+    <ClCompile Include="remote_caller.cpp" />
     <ClCompile Include="session_worker.cpp" />
     <ClCompile Include="srvapi.cpp" />
     <ClCompile Include="service_c.c" />
@@ -217,7 +220,10 @@
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\encodings.hpp" />
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\operations.hpp" />
     <ClInclude Include="..\..\..\w32oop\w32use.hpp" />
+    <ClInclude Include="data_poller.hpp" />
     <ClInclude Include="processhelper.h" />
+    <ClInclude Include="push_data_runner.hpp" />
+    <ClInclude Include="remote_caller.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="session_worker.hpp" />
     <ClInclude Include="srvapi.hpp" />

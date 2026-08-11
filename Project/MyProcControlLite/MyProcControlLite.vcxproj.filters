@@ -93,6 +93,15 @@
     <ClCompile Include="session_worker.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="push_data_runner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="data_poller.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="remote_caller.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MyProcControlUI.rc">
@@ -227,6 +236,15 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="session_worker.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="push_data_runner.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="data_poller.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="remote_caller.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

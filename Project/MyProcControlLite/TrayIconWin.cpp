@@ -31,9 +31,10 @@ static int mystart(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint)
 	if (status != RPC_S_OK) return (int)status;
 
 	int bSuccess = 0;
+	unsigned long error = 0;
 	int rpcRet = 0;
 	RpcTryExcept {
-		rpcRet = MyProcControlLite_LaunchWithControl(hBinding, appPath, cmd, &bSuccess);
+		rpcRet = MyProcControlLite_LaunchWithControl(hBinding, appPath, cmd, &bSuccess, &error);
 	}
 	RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
 		RpcBindingFree(&hBinding);
@@ -44,8 +45,9 @@ static int mystart(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint)
 	RpcBindingFree(&hBinding);
 
 	if (rpcRet != RPC_S_OK) return rpcRet;
-	if (!bSuccess) return ERROR_FUNCTION_FAILED;
-	return 0;
+	SetLastError(error);
+	if (!bSuccess) return error;
+	return error;
 }
 
 HICON MyProcControl_Lite::UIService::TrayIconWindow::app_icon;

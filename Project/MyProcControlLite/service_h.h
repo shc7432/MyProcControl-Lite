@@ -63,7 +63,8 @@ int MyProcControlLite_LaunchWithControl(
     /* [in] */ handle_t IDL_handle,
     /* [string][in] */ const wchar_t *application,
     /* [string][in] */ const wchar_t *cmdline,
-    /* [out] */ int *bSuccess);
+    /* [out] */ int *bSuccess,
+    /* [out] */ unsigned long *error);
 
 
 

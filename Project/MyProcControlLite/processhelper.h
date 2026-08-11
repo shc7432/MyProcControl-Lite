@@ -4,6 +4,10 @@
 #include <string>
 #include <memory>
 
+namespace app {
+	FARPROC GetProcAddress(HMODULE hModule, PCSTR name);
+}
+
 BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 	_In_opt_ LPCTSTR lpApplicationName,
 	_Inout_opt_ LPTSTR lpCommandLine,
@@ -21,4 +25,9 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 BOOL EnableAllPrivileges(HANDLE hToken);
 
 bool FreeResFile(DWORD dwResName, const std::wstring& lpResType, const std::wstring& lpFilePathName, HMODULE hInst = nullptr, int maxRetries = 5, DWORD retryDelayMs = 100);
+
+namespace app {
+	NTSTATUS SuspendProcess(_In_ HANDLE ProcessHandle);
+	NTSTATUS ResumeProcess(_In_ HANDLE ProcessHandle);
+}
 
