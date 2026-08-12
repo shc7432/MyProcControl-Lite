@@ -12,7 +12,7 @@ DWORD __stdcall app::DataPusher::_Myworker(PVOID pThis) {
 
 			for (auto& i : tasks) {
 				DWORD written = 0;
-				if (WriteFile(that->hPipe, i.data, i.length, &written, NULL));
+				void(WriteFile(that->hPipe, i.data, (DWORD)i.length, &written, NULL));
 				if (i.signal) SetEvent(i.signal);
 			}
 
@@ -48,6 +48,6 @@ void app::DataPusher::push(PVOID data, SIZE_T length) {
 void app::SimpleDataPusher::push(void* data, size_t len) {
 	std::lock_guard lock(mtx);
 	DWORD written = 0;
-	if (WriteFile(hPipe, data, (DWORD)len, &written, nullptr));
+	void(WriteFile(hPipe, data, (DWORD)len, &written, nullptr));
 }
 

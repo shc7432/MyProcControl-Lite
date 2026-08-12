@@ -504,7 +504,6 @@ void WindowsService::ServiceCoreThread() {
 
 			PWTS_SESSION_INFOW pWtsSessionInfo{}; DWORD c{};
 			if (!WTSEnumerateSessionsW(WTS_CURRENT_SERVER_HANDLE, 0, 1, &pWtsSessionInfo, &c)) {
-				for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
 				break;
 			}
 
@@ -517,7 +516,7 @@ void WindowsService::ServiceCoreThread() {
 				wstring user = pWtsUserName;
 				WTSFreeMemory(pWtsUserName);
 				if (user.empty()) continue;
-				if (sessionProcesses.contains(dwI)) continue;
+				if (sessionProcesses.contains(pWtsSessionInfo[dwI].SessionId)) continue;
 				// launch a worker in this session
 				wstring cmd = L"workerw --type=session-worker --name=\"" + m_serviceName + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
 				STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
@@ -533,9 +532,8 @@ void WindowsService::ServiceCoreThread() {
 			}
 
 			WTSFreeMemory(pWtsSessionInfo);
-
-			for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
 		} while (0);
+		for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
 
 		// wait
 		waitObjects.push_back(stopEvent);
