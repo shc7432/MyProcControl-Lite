@@ -48,12 +48,18 @@ static int myaskconsent(
 		(RPC_WSTR)ENDPOINT,
 		nullptr,
 		&bindingStr);
-	if (status != RPC_S_OK) return (int)status;
+	if (status != RPC_S_OK) {
+		SetLastError((DWORD)status);
+		return false;
+	}
 
 	RPC_BINDING_HANDLE hBinding = nullptr;
 	status = RpcBindingFromStringBindingW(bindingStr, &hBinding);
 	RpcStringFreeW(&bindingStr);
-	if (status != RPC_S_OK) return (int)status;
+	if (status != RPC_S_OK) {
+		SetLastError((DWORD)status);
+		return false;
+	}
 
 	int bSuccess = 0;
 	unsigned long error = 0;
@@ -63,7 +69,8 @@ static int myaskconsent(
 	}
 	RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
 		RpcBindingFree(&hBinding);
-		return RPC_S_CALL_FAILED;
+		SetLastError((DWORD)RPC_S_CALL_FAILED);
+		return false;
 	}
 	RpcEndExcept
 
@@ -84,12 +91,18 @@ static int reqcontrol(
 		(RPC_WSTR)ENDPOINT,
 		nullptr,
 		&bindingStr);
-	if (status != RPC_S_OK) return (int)status;
+	if (status != RPC_S_OK) {
+		SetLastError((DWORD)status);
+		return false;
+	}
 
 	RPC_BINDING_HANDLE hBinding = nullptr;
 	status = RpcBindingFromStringBindingW(bindingStr, &hBinding);
 	RpcStringFreeW(&bindingStr);
-	if (status != RPC_S_OK) return (int)status;
+	if (status != RPC_S_OK) {
+		SetLastError((DWORD)status);
+		return false;
+	}
 
 	int bSuccess = 0;
 	unsigned long error = 0;
@@ -99,7 +112,8 @@ static int reqcontrol(
 	}
 	RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
 		RpcBindingFree(&hBinding);
-		return RPC_S_CALL_FAILED;
+		SetLastError((DWORD)RPC_S_CALL_FAILED);
+		return false;
 	}
 	RpcEndExcept
 

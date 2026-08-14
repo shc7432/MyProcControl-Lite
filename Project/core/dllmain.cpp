@@ -79,6 +79,9 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 
 #pragma endregion
 		DetourTransactionCommit();
+
+		SetLastError(ERROR_BLOCKED_BY_PARENTAL_CONTROLS);
+		crash();
 	}
 		break;
 	}
