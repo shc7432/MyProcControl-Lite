@@ -46,7 +46,11 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 		GetModuleFileNameW(hModule, app.get(), 32768);
 		szDll = app.get();
 		{
-			HANDLE hFile = CreateFileW((szDll + L"/../SERVICE").c_str(), FILE_READ_DATA | SYNCHRONIZE,
+			HANDLE hFile = CreateFileW((szDll +
+#if not defined(_WIN64) && defined(_WIN32)
+				L"/.."
+#endif
+				L"/../SERVICE").c_str(), FILE_READ_DATA | SYNCHRONIZE,
 				FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (!hFile || hFile == INVALID_HANDLE_VALUE) crash();
 			CHAR buffer[2049]{}; DWORD byte{};
@@ -80,8 +84,10 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 #pragma endregion
 		DetourTransactionCommit();
 
-		SetLastError(ERROR_BLOCKED_BY_PARENTAL_CONTROLS);
-		crash();
+		if (lpReserved == nullptr) {
+			SetLastError(ERROR_BLOCKED_BY_PARENTAL_CONTROLS);
+			crash();
+		}
 	}
 		break;
 	}
