@@ -23,6 +23,8 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 );
 int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long dwProcessId, unsigned long* error);
 
+static std::recursive_mutex consentUI_onlyOneInst;
+
 //////////////////////////////////////////////////////////////////////////////
 // MIDL user callbacks — required by service_c.c and service_s_wrapper.c
 //
@@ -142,10 +144,11 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		if (error) *error = ERROR_INVALID_PARAMETER;
 		return 0;
 	}
+	auto appPath = make_shared<WCHAR[]>(32768);
 	RPC_STATUS status;
 	ULONG client_pid = 0;
 	status = I_RpcBindingInqLocalClientPID(IDL_handle, &client_pid);
-	if (status != RPC_S_OK) {
+	if (status != RPC_S_OK || !GetModuleFileNameW(NULL, appPath.get(), 32768)) {
 		*bSuccess = 0;
 		*error = GetLastError();
 		return 0;
@@ -176,6 +179,24 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	}
 	w32oop::util::RAIIHelper c([&] { CloseHandle(hToken); app::ResumeProcess(hCaller); });
 
+	wstring callerPath, callerName;
+	{
+		auto callerPathPtr = make_shared<WCHAR[]>(32768);DWORD size = 32768;
+		if (!QueryFullProcessImageNameW(hCaller, 0, callerPathPtr.get(), &size)) {
+			*bSuccess = 0;
+			*error = GetLastError();
+			return 0;
+		}
+		callerPath = callerPathPtr.get();
+		size_t pos = callerPath.find_last_of(L'\\');
+		if (pos != std::wstring::npos) {
+			callerName = callerPath.substr(pos + 1);
+		}
+		else {
+			callerName = callerPath;
+		}
+	}
+
 	DWORD dwSessionId{};
 	if (!ProcessIdToSessionId(client_pid, &dwSessionId)) {
 		*bSuccess = 0;
@@ -186,6 +207,46 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		*bSuccess = 0;
 		*error = GetLastError();
 		return 0;
+	}
+
+	// consent first
+	{
+		wstring detailedDetails = std::format(
+			L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nCommand line:\n{}",
+			client_pid, callerName, callerPath, application, cmdline
+		);
+		wstring randomNonce = GenerateUUIDW();
+		w32oop::util::str::operations::replace(detailedDetails, L"\n", randomNonce);
+		w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
+		wstring cmd = std::format(L"consent.exe --type=consent --extra1=\"{}\" --extra2=LaunchWithControl --extra3=Allow --extra4=Deny "
+			L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={}", callerName,
+			w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce
+		); // TODO: add i18n; allow remember; allow customize timeout
+		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+		std::lock_guard _gg(consentUI_onlyOneInst);
+		if (!CreateProcessInSession(dwSessionId, appPath.get(), cmd.data(),
+			NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
+			*bSuccess = 0;
+			*error = GetLastError();
+			return 0;
+		}
+
+		DWORD code{};
+		ResumeThread(pi.hThread);
+		CloseHandle(pi.hThread);
+		if (WAIT_TIMEOUT == WaitForSingleObject(pi.hProcess, 35000)) {
+			TerminateProcess(pi.hProcess, 0);
+		}
+		GetExitCodeProcess(pi.hProcess, &code);
+		CloseHandle(pi.hProcess);
+
+		bool acc = code & 0xF0000000, remember = code & 0x0F000000;
+		// TODO: implement remember
+		if (!acc) {
+			*bSuccess = 0;
+			*error = 0xC0000022;
+			return 0;
+		}
 	}
 
 	STARTUPINFOEXW si{ sizeof(si) };
@@ -273,7 +334,6 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	unsigned long sisize,
 	unsigned long* custom_err_code
 ) {
-	static std::recursive_mutex onlyOneInst;
 	// get caller info
 	auto appPath = make_shared<WCHAR[]>(32768);
 	RPC_STATUS status;
@@ -332,9 +392,9 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 
 	// spawn a consent dialog
 	wstring detailedDetails = std::format(
-		L"Process name: {}\nPID: {}\nProcess file: {}\nTarget application: {}\nInherit handles?: {}\n"
+		L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nInherit handles?: {}\n"
 		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}\nCommand line:\n{}",
-		callerName, client_pid, callerPath, application, inherithandles ? L"Yes" : L"No",
+		client_pid, callerName, callerPath, application, inherithandles ? L"Yes" : L"No",
 		flags, cd, sisize, cmdline
 	);
 	wstring randomNonce = GenerateUUIDW();
@@ -345,7 +405,7 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce
 	); // TODO: add i18n; allow remember; allow customize timeout
 	STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-	std::lock_guard _gg(onlyOneInst);
+	std::lock_guard _gg(consentUI_onlyOneInst);
 	if (!CreateProcessInSession(dwSessionId, appPath.get(), cmd.data(),
 		NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
 		*custom_err_code = GetLastError();
@@ -366,7 +426,8 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	if (acc) return 1;
 
 	// TODO: allow user to customize error code
-	*custom_err_code = ERROR_CHILD_PROCESS_BLOCKED;
+	//*custom_err_code = ERROR_CHILD_PROCESS_BLOCKED;
+	*custom_err_code = ERROR_ACCESS_DENIED;
 	return 0;
 }
 
@@ -409,7 +470,10 @@ int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long
 
 	// check whether the caller process has permission to control the target process
 	bool permok = false; BOOL isWOW{};
-	ImpersonateLoggedOnUser(hToken);
+	if (!ImpersonateLoggedOnUser(hToken)) {
+		*error = GetLastError();
+		return 0;
+	}
 	do {
 		HANDLE hProcess = OpenProcess(GENERIC_READ | GENERIC_WRITE | PROCESS_CREATE_THREAD, FALSE, dwProcessId);
 		if (!hProcess) break;
@@ -417,7 +481,7 @@ int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long
 			CloseHandle(hProcess);
 			break;
 		}
-		HANDLE hThread = CreateRemoteThread(hProcess, NULL, NULL, NULL, NULL, CREATE_SUSPENDED, NULL);
+		HANDLE hThread = CreateRemoteThread(hProcess, NULL, NULL, (LPTHREAD_START_ROUTINE)(ULONG_PTR)1, NULL, CREATE_SUSPENDED, NULL);
 		if (!hThread) break;
 #pragma warning(push)
 #pragma warning(disable: 6258)
@@ -427,7 +491,10 @@ int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long
 		CloseHandle(hProcess);
 		permok = true;
 	} while (0);
-	RevertToSelf();
+	if (!RevertToSelf()) {
+		*error = GetLastError();
+		return 0;
+	}
 
 	if (!permok) {
 		*error = 0xC0000022;
