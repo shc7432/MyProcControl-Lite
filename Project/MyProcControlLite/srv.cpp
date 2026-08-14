@@ -9,6 +9,7 @@
 using namespace std;
 
 WindowsService* gInstance = nullptr;
+ServiceCoreProcess* ServiceCoreProcess::Instance;
 
 WindowsService::WindowsService(const std::wstring& serviceName)
 	: m_serviceName(serviceName),
@@ -27,7 +28,6 @@ WindowsService::WindowsService(const std::wstring& serviceName)
 	stopEvent = CreateEventW(NULL, TRUE, FALSE, FALSE);
 	if (!stopEvent) throw exception("Init failed: Cannot create event");
 	m_status.dwControlsAccepted |= SERVICE_ACCEPT_STOP;
-	injector86_in = injector86_out = injector64_in = injector64_out = NULL;
 	appPath = make_shared<WCHAR[]>(32768);
 	GetModuleFileNameW(NULL, appPath.get(), 32768);
 }
@@ -439,20 +439,15 @@ void WindowsService::PrepareEnvironment() {
 
 void WindowsService::ServiceCoreThread() {
 	// Local variables
-	std::array<HANDLE, 2> InjectHelperProcess{ NULL, NULL };
 	HANDLE serviceWorkerProcess{}, hSwStopEvent{};
 	vector<HANDLE> waitObjects;
 	constexpr DWORD WORKER_SLEEPTIME = 2000;
 	ReportStatus(SERVICE_RUNNING);
 
-	std::thread Helperx86, Helperx64;
 	HANDLE hCrashpadHandler{};
 	SECURITY_ATTRIBUTES can_inherit{ .nLength = sizeof(SECURITY_ATTRIBUTES), .bInheritHandle = TRUE };
 	hSwStopEvent = CreateEventW(&can_inherit, TRUE, FALSE, NULL);
 	if (!hSwStopEvent) __crash();
-
-	// rpc server
-	if (!m_rpcServer.Start(m_serviceName)) __crash();
 
 	// TODO: if failure many times then wait
 	while (!m_stopRequested) {
@@ -460,47 +455,6 @@ void WindowsService::ServiceCoreThread() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 			continue;
 		}
-
-		// X86 ([0]) or X64 ([1]) inject helper
-		for (size_t index = 0, size = InjectHelperProcess.size(); index < size; ++index) {
-			auto& i = InjectHelperProcess.at(index);
-			if (!(!i || WaitForSingleObject(i, 0) == WAIT_OBJECT_0) || i == INVALID_HANDLE_VALUE) continue;
-			// died or not started
-			if (i) CloseHandle(i);
-			bool isX86 = index == 0;
-			auto& rundll32 = isX86 ? RunDLL_X86 : RunDLL_X64;
-			auto& dllfile = isX86 ? injector86 : injector64;
-			auto& injector_in = isX86 ? injector86_in : injector64_in;
-			auto& injector_out = isX86 ? injector86_out : injector64_out;
-			STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-			si.dwFlags = STARTF_USESTDHANDLES;
-			if (injector_in) { CloseHandle(injector_in); injector_in = NULL; }
-			if (injector_out) { CloseHandle(injector_out); injector_out = NULL; }
-			SECURITY_ATTRIBUTES caninherit{ .nLength = sizeof(caninherit), .lpSecurityDescriptor = NULL, .bInheritHandle = TRUE };
-			HANDLE subp_stdin{}, subp_stdout{};
-			if (!(CreatePipe(&subp_stdin, &injector_in, &caninherit, 0) && subp_stdin && injector_in && 
-				CreatePipe(&injector_out, &subp_stdout, &caninherit, 0) && subp_stdout && injector_out)) {
-				__crash();
-			}
-			si.hStdInput = subp_stdin;
-			si.hStdError = si.hStdOutput = subp_stdout;
-			wstring cmd = L"RunDLL32 \"" + dllfile + L"\",RunDLL /=help[] /password=0812 " +
-				to_wstring(GetCurrentProcessId()) + L" " + 
-				to_wstring((ULONG_PTR)injector_out) + L" " + to_wstring((ULONG_PTR)injector_in);
-			if (!CreateProcessW(rundll32.c_str(), cmd.data(), NULL, NULL, TRUE,
-				CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
-				// Cannot create helper!!! TODO: Log the event
-				__crash();
-			}
-			CloseHandle(subp_stdin); CloseHandle(subp_stdout);
-			InjectHelperProcess[index] = pi.hProcess;
-			auto& helper = isX86 ? Helperx86 : Helperx64;
-			if (helper.joinable()) helper.join();
-			helper = std::thread([this](HANDLE hFile) { return this->InjectHelperDataEater(hFile); }, injector_out);
-			ResumeThread(pi.hThread);
-			CloseHandle(pi.hThread);
-		}
-		for (auto& i : InjectHelperProcess) if (i) waitObjects.push_back(i);
 
 		// service worker process
 		if (!serviceWorkerProcess || WaitForSingleObject(serviceWorkerProcess, 0) == WAIT_OBJECT_0) do {
@@ -526,7 +480,6 @@ void WindowsService::ServiceCoreThread() {
 	}
 
 	// cleanup
-	m_rpcServer.Stop();
 	if (serviceWorkerProcess) {
 		if (hSwStopEvent) SetEvent(hSwStopEvent);
 		if (WAIT_TIMEOUT == WaitForSingleObject(serviceWorkerProcess, 3000)) {
@@ -534,26 +487,64 @@ void WindowsService::ServiceCoreThread() {
 		}
 		CloseHandle(serviceWorkerProcess);
 	}
-	if (injector86_in) CloseHandle(injector86_in);
-	if (injector86_out) CloseHandle(injector86_out);
-	if (injector64_in) CloseHandle(injector64_in);
-	if (injector64_out) CloseHandle(injector64_out);
 	if (hCrashpadHandler) CloseHandle(hCrashpadHandler);
 	if (hSwStopEvent) CloseHandle(hSwStopEvent);
-	if (Helperx86.joinable()) { Helperx86.join(); }
-	if (Helperx64.joinable()) { Helperx64.join(); }
-	for (auto& i : InjectHelperProcess) CloseHandle(i);
 
 }
 
-int WindowsService::ServiceWorkerProcess(wstring name, DWORD ppid, string extra_hStop) {
+
+int ServiceCoreProcess::ServiceWorkerProcess(wstring name, DWORD ppid, string extra_hStop) {
+	ServiceCoreProcess scp;
+	scp.name = name;
+	scp.ppid = ppid;
+	scp.extra_hStop = extra_hStop;
+	ServiceCoreProcess::Instance = &scp;
+	scp.PrepareEnvironment();
+	return scp.RealEntry();
+}
+
+
+void ServiceCoreProcess::PrepareEnvironment() {
+	appPath = make_shared<WCHAR[]>(32768);
+	GetModuleFileNameW(NULL, appPath.get(), 32768);
+	if (!(GetSystemDirectoryW(system32, 260) && GetTempPathW(260, Temp))) __crash();
+	HMODULE k32 = GetModuleHandleW(L"kernel32.dll");
+	if (!k32) __crash();
+	auto GetProcAddress = reinterpret_cast<decltype(&::GetProcAddress)>(::GetProcAddress(k32, "GetProcAddress"));
+	if (!GetProcAddress) __crash();
+	typedef DWORD(WINAPI* GetTempPath2W_t)(_In_ DWORD BufferLength, _Out_ LPWSTR Buffer);
+	auto GetTempPath2W = (GetTempPath2W_t)GetProcAddress(k32, "GetTempPath2W");
+	if (GetTempPath2W) {
+		memset(Temp, 0, sizeof(Temp));
+		if (!GetTempPath2W(260, Temp)) {
+			if (!GetTempPathW(260, Temp)) __crash();
+		}
+	}
+	RunDLL_X64 = system32, RunDLL_X86 = system32;
+	RunDLL_X64 = (RunDLL_X64 / L"rundll32.exe").lexically_normal().make_preferred();
+	RunDLL_X86 = (RunDLL_X86.parent_path() / L"SysWOW64" / L"rundll32.exe").lexically_normal().make_preferred();
+
+	// prepare resource file
+	session_res = Temp;
+	session_res = session_res / (L"{E3A082AB-4D74-49A9-9804-DA7C0570C1B4}."s + name);
+	coredll86 = session_res / L"x86" / L"core.dll";
+	if (!FreeResFile(IDR_BIN_COREDLL86, L"BIN", coredll86)) __crash();
+	coredll64 = session_res / L"core.dll";
+	if (!FreeResFile(IDR_BIN_COREDLL64, L"BIN", coredll64)) __crash();
+	injector86 = session_res / L"X86InjectHelper.dll";
+	if (!FreeResFile(IDR_BIN_INJECTHELPER86, L"BIN", injector86)) __crash();
+	injector64 = session_res / L"InjectHelper.dll";
+	if (!FreeResFile(IDR_BIN_INJECTHELPER64, L"BIN", injector64)) __crash();
+}
+
+
+int ServiceCoreProcess::RealEntry() {
 	vector<HANDLE> waitObjects;
 	map<DWORD, HANDLE> sessionProcesses;
 	w32ProcessHandle hParent;
+	std::array<HANDLE, 2> InjectHelperProcess{ NULL, NULL };
 	w32EventHandle hStop{};
 	constexpr DWORD WORKER_SLEEPTIME = 2000;
-	auto appPath = make_shared<WCHAR[]>(32768);
-	GetModuleFileNameW(NULL, appPath.get(), 32768);
 	try {
 		hParent = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, ppid);
 		hStop = (HANDLE)(ULONG_PTR)std::stoull(extra_hStop);
@@ -569,7 +560,51 @@ int WindowsService::ServiceWorkerProcess(wstring name, DWORD ppid, string extra_
 		}
 	});
 
+	// rpc server
+	if (!m_rpcServer.Start(name)) __crash();
+
 	while (1) {
+
+		// X86 ([0]) or X64 ([1]) inject helper
+		for (size_t index = 0, size = InjectHelperProcess.size(); index < size; ++index) {
+			auto& i = InjectHelperProcess.at(index);
+			if (!(!i || WaitForSingleObject(i, 0) == WAIT_OBJECT_0) || i == INVALID_HANDLE_VALUE) continue;
+			// died or not started
+			if (i) CloseHandle(i);
+			bool isX86 = index == 0;
+			auto& rundll32 = isX86 ? RunDLL_X86 : RunDLL_X64;
+			auto& dllfile = isX86 ? injector86 : injector64;
+			auto& injector_in = isX86 ? injector86_in : injector64_in;
+			auto& injector_out = isX86 ? injector86_out : injector64_out;
+			STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+			si.dwFlags = STARTF_USESTDHANDLES;
+			if (injector_in) { CloseHandle(injector_in); injector_in = NULL; }
+			if (injector_out) { CloseHandle(injector_out); injector_out = NULL; }
+			SECURITY_ATTRIBUTES caninherit{ .nLength = sizeof(caninherit), .lpSecurityDescriptor = NULL, .bInheritHandle = TRUE };
+			HANDLE subp_stdin{}, subp_stdout{};
+			if (!(CreatePipe(&subp_stdin, &injector_in, &caninherit, 0) && subp_stdin && injector_in &&
+				CreatePipe(&injector_out, &subp_stdout, &caninherit, 0) && subp_stdout && injector_out)) {
+				__crash();
+			}
+			si.hStdInput = subp_stdin;
+			si.hStdError = si.hStdOutput = subp_stdout;
+			wstring cmd = L"RunDLL32 \"" + dllfile + L"\",RunDLL /=help[] /password=0812 " +
+				to_wstring(GetCurrentProcessId()) + L" " +
+				to_wstring((ULONG_PTR)injector_out) + L" " + to_wstring((ULONG_PTR)injector_in);
+			if (!CreateProcessW(rundll32.c_str(), cmd.data(), NULL, NULL, TRUE,
+				CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
+				// Cannot create helper!!! TODO: Log the event
+				__crash();
+			}
+			CloseHandle(subp_stdin); CloseHandle(subp_stdout);
+			InjectHelperProcess[index] = pi.hProcess;
+			auto& caller = isX86 ? injectHelperCaller86 : injectHelperCaller64;
+			caller = std::make_unique<app::RemoteCaller>(injector_in, injector_out);
+			ResumeThread(pi.hThread);
+			CloseHandle(pi.hThread);
+		}
+		for (auto& i : InjectHelperProcess) if (i) waitObjects.push_back(i);
+
 		// user detector
 		do {
 			vector<DWORD> need_delete;
@@ -625,17 +660,18 @@ int WindowsService::ServiceWorkerProcess(wstring name, DWORD ppid, string extra_
 	}
 
 	for (auto& i : sessionProcesses) CloseHandle(i.second);
+	m_rpcServer.Stop();
+	if (injector86_in) CloseHandle(injector86_in);
+	if (injector86_out) CloseHandle(injector86_out);
+	if (injector64_in) CloseHandle(injector64_in);
+	if (injector64_out) CloseHandle(injector64_out);
+	if (injectHelperCaller64) injectHelperCaller64 = nullptr;
+	if (injectHelperCaller86) injectHelperCaller86 = nullptr;
+	for (auto& i : InjectHelperProcess) CloseHandle(i);
 	SetEvent(hEventExit);
 	parentWaiter.join();
 	return 0;
 }
 
-void WindowsService::InjectHelperDataEater(HANDLE hPipe) {
-	uint8_t buffer[4096]{};
-	DWORD dwReaded{};
-	while (ReadFile(hPipe, buffer, 4096, &dwReaded, NULL)) {
-		// TODO: Post event to main thread
-	}
-}
 
 

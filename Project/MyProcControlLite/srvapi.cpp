@@ -1,6 +1,7 @@
 ﻿#include "srvapi.hpp"
 #include "service_h.h"
 #include "processhelper.h"
+#include "injectusinghelper.hpp"
 #include <w32use.hpp>
 #include <stdlib.h>
 #include <userenv.h>
@@ -199,7 +200,15 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 	if (pEnv) DestroyEnvironmentBlock(pEnv);
 
-	// TODO: inject
+	BOOL isWOW{};
+	if (!IsWow64Process(pi.hProcess, &isWOW) || !MyProcControl_Lite::InjectCoreDllUsingHelper(pi.dwProcessId, isWOW)) {
+		*error = GetLastError();
+		TerminateProcess(pi.hProcess, ERROR_INTERNAL_ERROR);
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+		*bSuccess = 0;
+		return 0;
+	}
 
 	ResumeThread(pi.hThread);
 	CloseHandle(pi.hThread);

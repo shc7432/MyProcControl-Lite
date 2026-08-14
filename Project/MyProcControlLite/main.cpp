@@ -67,7 +67,7 @@ int WINAPI wWinMain(
 	}
 
 	if (type == L"service-core-worker") {
-		return WindowsService::ServiceWorkerProcess(name, Ppid, u8extra1);
+		return ServiceCoreProcess::ServiceWorkerProcess(name, Ppid, u8extra1);
 	}
 
 	if (type == L"session-worker") {

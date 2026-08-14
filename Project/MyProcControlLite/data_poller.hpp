@@ -1,41 +1,37 @@
 ﻿#pragma once
 #include "targetver.h"
 #include <thread>
-#include <atomic>
 #include <functional>
 #include <string>
-#include <vector>
 #include <stdexcept>
 
 namespace app {
-
     class DataPoller {
     public:
-        // 回调函数类型：参数是子进程输出的一行完整字符串（不含换行）
-        using Callback = std::function<void(const std::string& line)>;
-
-        DataPoller(HANDLE hPipeReadEnd, Callback callback);
-        ~DataPoller();
-
-        // 启动轮询线程（内部自动开始读取）
-        void Start();
-
-        // 停止轮询（线程安全）
-        void Stop();
-
-        // 是否正在运行
-        bool IsRunning() const { return m_running; }
-
-    private:
-        // 工作线程函数
-        void PollingThread();
-
-        HANDLE m_hPipe;                  // 管道读端（子进程的 stdout）
-        Callback m_callback;             // 业务回调
-        std::thread m_worker;            // 后台读取线程
-        std::atomic<bool> m_running;     // 运行标志
-        std::atomic<bool> m_stopRequested; // 停止请求
+        DataPoller(HANDLE dataSource);
+        DataPoller(HANDLE dataSource, std::function<void(PVOID, DWORD)> onData);
+        virtual ~DataPoller();
+        virtual void setCallback(std::function<void(PVOID, DWORD)> cb) { this->_cb = cb; }
+    protected:
+        static DWORD WINAPI _Worker(PVOID pThis);
+        virtual void worker_loop();
+        virtual void runScheduledCallback(PVOID, DWORD);
+    protected:
+        bool running;
+        HANDLE hSource, hWorker;
+        std::function<void(PVOID, DWORD)> _cb;
     };
 
-} // namespace app
-
+    class LineDataPoller : public DataPoller {
+    public:
+        using LineCallback = std::function<void(const std::string& line)>;
+        LineDataPoller(HANDLE dataSource);
+        LineDataPoller(HANDLE dataSource, LineCallback onLine);
+        void setCallback(LineCallback onLine) { m_lineCb = onLine; }
+    protected:
+        void runScheduledCallback(PVOID buffer, DWORD len) override;
+    private:
+        LineCallback m_lineCb;
+        std::string m_buffer;
+    };
+}

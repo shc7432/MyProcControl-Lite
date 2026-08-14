@@ -102,6 +102,9 @@
     <ClCompile Include="remote_caller.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="injectusinghelper.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MyProcControlUI.rc">
@@ -245,6 +248,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="remote_caller.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="injectusinghelper.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

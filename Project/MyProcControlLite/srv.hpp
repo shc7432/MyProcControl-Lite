@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include "targetver.h"
 #include "srvapi.hpp"
-#include <windows.h>
 #include <thread>
 #include <atomic>
 #include <string>
@@ -11,6 +10,11 @@
 #include <functional>
 #include <filesystem>
 #include <fstream>
+#include "remote_caller.hpp"
+
+namespace MyProcControl_Lite {
+	class MyWindowsServiceInjectHelper;
+}
 
 class WindowsService {
 public:
@@ -25,8 +29,6 @@ public:
 
 	// 服务启动
 	virtual void OnStart();
-
-	static int ServiceWorkerProcess(std::wstring name, DWORD ppid, std::string extra_hStop);
 
 protected:
 	// 准备环境
@@ -60,8 +62,8 @@ protected:
 
 	void InjectHelperDataEater(HANDLE hPipe);
 
-private:
-	void __crash(DWORD reason = (DWORD)-1);
+public:
+	static void __crash(DWORD reason = (DWORD)-1);
 
 private:
 	std::wstring m_serviceName;
@@ -80,6 +82,41 @@ private:
 	std::filesystem::path session_res;
 	std::wstring coredll86, coredll64, injector86, injector64;
 
+
+};
+
+
+class ServiceCoreProcess {
+public:
+	static int ServiceWorkerProcess(std::wstring name, DWORD ppid, std::string extra_hStop);
+
+public:
+	friend MyProcControl_Lite::MyWindowsServiceInjectHelper;
+
+private:
+	void __crash(DWORD reason = (DWORD)-1) {
+		return WindowsService::__crash(reason);
+	}
+
+protected:
+	static ServiceCoreProcess* Instance;
+
+	void PrepareEnvironment();
+	int RealEntry();
+
+	std::wstring name;
+	DWORD ppid;
+	std::string extra_hStop;
+
+	std::shared_ptr<WCHAR[]> appPath;
+	WCHAR system32[260]{}, Temp[260]{};
+	std::filesystem::path RunDLL_X64, RunDLL_X86;
+	std::filesystem::path session_res;
+	std::wstring coredll86, coredll64, injector86, injector64;
+
 	MyProcControl_Lite::RpcServer m_rpcServer;
 	HANDLE injector86_in, injector86_out, injector64_in, injector64_out;
+	std::unique_ptr<app::RemoteCaller> injectHelperCaller64, injectHelperCaller86;
+
 };
+
