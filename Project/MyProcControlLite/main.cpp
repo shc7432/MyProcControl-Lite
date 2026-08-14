@@ -46,14 +46,18 @@ int WINAPI wWinMain(
 	if (FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED))) __fastfail(FAST_FAIL_FATAL_APP_EXIT);
 	w32oop::util::RAIIHelper comUninit([] { CoUninitialize(); });
 	CLI::App app;
-	string u8type, u8name, u8action, u8ppid;
+	string u8type, u8name, u8action, u8ppid, u8extra1;
 	app.add_option("--type", u8type);
 	app.add_option("--name", u8name);
 	app.add_option("--action", u8action);
 	app.add_option("--ppid", u8ppid);
+	app.add_option("--extra1", u8extra1);
 	try { app.parse(utf16_utf8(GetCommandLineW()), true); } catch (...) {}
 	auto argc = app.count_all();
 	wstring type = utf8_utf16(u8type), name = utf8_utf16(u8name), action = utf8_utf16(u8action), ppid = utf8_utf16(u8ppid);
+	DWORD Ppid{};
+	try { Ppid = std::stoul(ppid); }
+	catch (...) { Ppid = (DWORD)-1; }
 
 	if (type == L"service") {
 		if (name.empty()) return ERROR_INVALID_PARAMETER;
@@ -62,8 +66,12 @@ int WINAPI wWinMain(
 		return 0;
 	}
 
+	if (type == L"service-core-worker") {
+		return WindowsService::ServiceWorkerProcess(name, Ppid, u8extra1);
+	}
+
 	if (type == L"session-worker") {
-		return SessionWorker(name, std::stoul(ppid));
+		return SessionWorker(name, Ppid);
 	}
 
 	if (type == L"tray-icon") {
@@ -80,8 +88,7 @@ int WINAPI wWinMain(
 			if (hWaiter) CloseHandle(hWaiter);
 			else return GetLastError();
 		}
-			UIService::TrayIconWindow win;
-		win.SetRpcEndpoint(name);
+		UIService::TrayIconWindow win(name);
 		win.create();
 		win.set_main_window();
 		return win.run();
@@ -172,7 +179,9 @@ int WINAPI wWinMain(
 				Service myService = w32ServiceHandle(CreateServiceW(scm, name.c_str(),
 					(L"Process Control Server (" + name + L")").c_str(),
 					SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
-					cmdLine.c_str(), NULL, NULL, L"RpcSs\0DcomLaunch\0LSM\0ProfSvc\0UserManager\0", NULL, NULL));
+					cmdLine.c_str(), NULL, NULL, 
+					L"RpcSs\0DcomLaunch\0LSM\0CryptSvc\0SamSs\0ProfSvc\0UserManager\0EventSystem\0SENS\0",
+					NULL, NULL));
 				SERVICE_DESCRIPTIONW a{};
 				WCHAR desc[] = L"Process Control Server";
 				a.lpDescription = desc;

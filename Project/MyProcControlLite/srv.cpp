@@ -338,6 +338,14 @@ void WindowsService::ServiceStopThread() {
 	SetEvent(stopEvent);
 	ReportStatus(SERVICE_STOP_PENDING);
 
+	if (HANDLE h = CreateThread(NULL, NULL, [](PVOID)->DWORD {
+		Sleep(15000);
+		ExitProcess(ERROR_TIMEOUT);
+		return 0;
+	}, NULL, 0, 0)) {
+		CloseHandle(h);
+	}
+
 	// 
 	if (m_coreThread.joinable()) {
 		if (WAIT_TIMEOUT == WaitForSingleObject(m_coreThread.native_handle(), 10000)) {
@@ -431,18 +439,22 @@ void WindowsService::PrepareEnvironment() {
 
 void WindowsService::ServiceCoreThread() {
 	// Local variables
-	map<DWORD, HANDLE> sessionProcesses;
 	std::array<HANDLE, 2> InjectHelperProcess{ NULL, NULL };
+	HANDLE serviceWorkerProcess{}, hSwStopEvent{};
 	vector<HANDLE> waitObjects;
 	constexpr DWORD WORKER_SLEEPTIME = 2000;
 	ReportStatus(SERVICE_RUNNING);
 
 	std::thread Helperx86, Helperx64;
 	HANDLE hCrashpadHandler{};
+	SECURITY_ATTRIBUTES can_inherit{ .nLength = sizeof(SECURITY_ATTRIBUTES), .bInheritHandle = TRUE };
+	hSwStopEvent = CreateEventW(&can_inherit, TRUE, FALSE, NULL);
+	if (!hSwStopEvent) __crash();
 
 	// rpc server
-	m_rpcServer.Start(m_serviceName);
+	if (!m_rpcServer.Start(m_serviceName)) __crash();
 
+	// TODO: if failure many times then wait
 	while (!m_stopRequested) {
 		if (m_pauseRequested) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -490,6 +502,74 @@ void WindowsService::ServiceCoreThread() {
 		}
 		for (auto& i : InjectHelperProcess) if (i) waitObjects.push_back(i);
 
+		// service worker process
+		if (!serviceWorkerProcess || WaitForSingleObject(serviceWorkerProcess, 0) == WAIT_OBJECT_0) do {
+			if (serviceWorkerProcess) CloseHandle(serviceWorkerProcess);
+			STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+			wstring cmd = L"workerw --type=service-core-worker --name=\"" + m_serviceName + L"\" --ppid=" +
+				to_wstring(GetCurrentProcessId()) + L" --extra1=" + to_wstring(ULONG_PTR(hSwStopEvent));
+			if (!CreateProcessW(appPath.get(), cmd.data(), NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
+				// TODO: log the failure
+				serviceWorkerProcess = NULL;
+				break;
+			}
+			ResumeThread(pi.hThread);
+			CloseHandle(pi.hThread);
+			serviceWorkerProcess = pi.hProcess;
+		} while (0);
+		if (serviceWorkerProcess) waitObjects.push_back(serviceWorkerProcess);
+
+		// wait
+		waitObjects.push_back(stopEvent);
+		WaitForMultipleObjects((DWORD)waitObjects.size(), waitObjects.data(), FALSE, WORKER_SLEEPTIME);
+		waitObjects.clear();
+	}
+
+	// cleanup
+	m_rpcServer.Stop();
+	if (serviceWorkerProcess) {
+		if (hSwStopEvent) SetEvent(hSwStopEvent);
+		if (WAIT_TIMEOUT == WaitForSingleObject(serviceWorkerProcess, 3000)) {
+			TerminateProcess(serviceWorkerProcess, ERROR_TIMEOUT);
+		}
+		CloseHandle(serviceWorkerProcess);
+	}
+	if (injector86_in) CloseHandle(injector86_in);
+	if (injector86_out) CloseHandle(injector86_out);
+	if (injector64_in) CloseHandle(injector64_in);
+	if (injector64_out) CloseHandle(injector64_out);
+	if (hCrashpadHandler) CloseHandle(hCrashpadHandler);
+	if (hSwStopEvent) CloseHandle(hSwStopEvent);
+	if (Helperx86.joinable()) { Helperx86.join(); }
+	if (Helperx64.joinable()) { Helperx64.join(); }
+	for (auto& i : InjectHelperProcess) CloseHandle(i);
+
+}
+
+int WindowsService::ServiceWorkerProcess(wstring name, DWORD ppid, string extra_hStop) {
+	vector<HANDLE> waitObjects;
+	map<DWORD, HANDLE> sessionProcesses;
+	w32ProcessHandle hParent;
+	w32EventHandle hStop{};
+	constexpr DWORD WORKER_SLEEPTIME = 2000;
+	auto appPath = make_shared<WCHAR[]>(32768);
+	GetModuleFileNameW(NULL, appPath.get(), 32768);
+	try {
+		hParent = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, ppid);
+		hStop = (HANDLE)(ULONG_PTR)std::stoull(extra_hStop);
+	}
+	catch (...) {
+		return ERROR_INVALID_PARAMETER;
+	}
+	w32EventHandle hEventExit = CreateEvent(NULL, TRUE, FALSE, NULL);
+	std::thread parentWaiter([&hParent, &hEventExit] {
+		HANDLE waits[]{ hParent, hEventExit };
+		if (WAIT_OBJECT_0 == WaitForMultipleObjects(2, waits, FALSE, INFINITE)) {
+			ExitProcess(ERROR_CANCELLED);
+		}
+	});
+
+	while (1) {
 		// user detector
 		do {
 			vector<DWORD> need_delete;
@@ -518,7 +598,7 @@ void WindowsService::ServiceCoreThread() {
 				if (user.empty()) continue;
 				if (sessionProcesses.contains(pWtsSessionInfo[dwI].SessionId)) continue;
 				// launch a worker in this session
-				wstring cmd = L"workerw --type=session-worker --name=\"" + m_serviceName + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
+				wstring cmd = L"cored --type=session-worker --name=\"" + name + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
 				STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
 				if (!CreateProcessInSession(pWtsSessionInfo[dwI].SessionId, appPath.get(), cmd.data(),
 					NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
@@ -536,23 +616,18 @@ void WindowsService::ServiceCoreThread() {
 		for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
 
 		// wait
-		waitObjects.push_back(stopEvent);
-		WaitForMultipleObjects((DWORD)waitObjects.size(), waitObjects.data(), FALSE, WORKER_SLEEPTIME);
+		waitObjects.insert(waitObjects.begin(), hStop);
+		auto r = WaitForMultipleObjects((DWORD)waitObjects.size(), waitObjects.data(), FALSE, WORKER_SLEEPTIME);
 		waitObjects.clear();
+		if (r == WAIT_OBJECT_0) {
+			break;
+		}
 	}
 
-	// cleanup
-	m_rpcServer.Stop();
-	if (injector86_in) CloseHandle(injector86_in);
-	if (injector86_out) CloseHandle(injector86_out);
-	if (injector64_in) CloseHandle(injector64_in);
-	if (injector64_out) CloseHandle(injector64_out);
-	if (hCrashpadHandler) CloseHandle(hCrashpadHandler);
-	if (Helperx86.joinable()) { Helperx86.join(); }
-	if (Helperx64.joinable()) { Helperx64.join(); }
-	for (auto& i : InjectHelperProcess) CloseHandle(i);
 	for (auto& i : sessionProcesses) CloseHandle(i.second);
-
+	SetEvent(hEventExit);
+	parentWaiter.join();
+	return 0;
 }
 
 void WindowsService::InjectHelperDataEater(HANDLE hPipe) {

@@ -45,7 +45,7 @@ int SessionWorker(std::wstring name, DWORD ppid) {
 	}
 	while (1) {
 		// kill other ui process
-		while (HWND hwnd = FindWindowW(MyProcControl_Lite::UIService::TrayIconWindow().get_class_name().c_str(), NULL)) {
+		while (HWND hwnd = FindWindowW(MyProcControl_Lite::UIService::TrayIconWindow(name).get_class_name().c_str(), name.c_str())) {
 			if (SendMessageTimeoutW(hwnd, WM_APP + WM_QUIT, 1868812, 0, SMTO_ABORTIFHUNG | SMTO_BLOCK, 5000, NULL))
 				for (size_t i = 0; i < 100; ++i) if (IsWindow(hwnd)) Sleep(10); else break;
 			if (IsWindow(hwnd)) {

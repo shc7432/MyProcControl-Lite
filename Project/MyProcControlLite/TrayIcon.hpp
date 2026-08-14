@@ -9,13 +9,13 @@ namespace UIService {
 class TrayIconWindow : public Window
 {
 public:
-	TrayIconWindow() : Window(L"", 1, 1) {};
+	TrayIconWindow(wstring svc) : Window(svc, 1, 1), svc(svc) {};
 	const HICON get_window_icon() const override {
 		return myicon();
 	}
-	void SetRpcEndpoint(const std::wstring& svcName);
 
 protected:
+	wstring svc;
 	TrayIcon icon;
 	Menu menu;
 	static HICON app_icon;

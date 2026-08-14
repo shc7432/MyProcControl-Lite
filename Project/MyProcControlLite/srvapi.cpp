@@ -3,6 +3,7 @@
 #include "processhelper.h"
 #include <w32use.hpp>
 #include <stdlib.h>
+#include <userenv.h>
 #include <memory>
 #pragma comment(lib, "RpcRT4.lib")
 
@@ -64,7 +65,7 @@ bool MyProcControl_Lite::RpcServer::Start(const std::wstring& serviceName)
 		RPC_C_PROTSEQ_MAX_REQS_DEFAULT,
 		(RPC_WSTR)m_endpoint.c_str(),
 		NULL);
-	if (status != RPC_S_OK && status != RPC_S_DUPLICATE_ENDPOINT) return false;
+	if (status != RPC_S_OK) return false;
 
 	status = RpcServerRegisterIfEx(
 		IServiceRpc_v1_0_s_ifspec,
@@ -86,6 +87,7 @@ bool MyProcControl_Lite::RpcServer::Stop()
 {
 	if (!m_running.load()) return true;
 
+	//RpcMgmtStopServerListening(nullptr);// FIXME: 
 	RPC_STATUS status = RpcServerUnregisterIfEx(
 		IServiceRpc_v1_0_s_ifspec,
 		NULL,
@@ -179,15 +181,23 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	si.StartupInfo.wShowWindow = SW_SHOWNORMAL;
 	si.lpAttributeList = PPROC_THREAD_ATTRIBUTE_LIST(attributeList ? attributeList.get() : nullptr);
 
+	// 创建用户环境块
+	LPVOID pEnv = NULL;
+	if (CreateEnvironmentBlock(&pEnv, hToken, TRUE)) {
+		flags |= CREATE_UNICODE_ENVIRONMENT;
+	}
+
 	wstring cmd = cmdline;
 	if (!CreateProcessAsUserW(hToken, application, cmd.data(),
-		NULL, NULL, FALSE, flags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi)) {
+		NULL, NULL, FALSE, flags, pEnv, NULL, (LPSTARTUPINFOW)&si, &pi)) {
 		*error = GetLastError();
 		if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
+		if (pEnv) DestroyEnvironmentBlock(pEnv);
 		*bSuccess = 0;
 		return 0;
 	}
 	if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
+	if (pEnv) DestroyEnvironmentBlock(pEnv);
 
 	// TODO: inject
 

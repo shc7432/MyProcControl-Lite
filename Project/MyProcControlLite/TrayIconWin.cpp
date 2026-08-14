@@ -8,11 +8,6 @@
 
 extern HINSTANCE hInst;
 
-void MyProcControl_Lite::UIService::TrayIconWindow::SetRpcEndpoint(const std::wstring& svcName)
-{
-	m_rpcEndpoint = L"MyProcControlLiteRpc_" + svcName;
-}
-
 static int mystart(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint)
 {
 	RPC_WSTR bindingStr = nullptr;
@@ -121,7 +116,7 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 					SetLastError(err);
 					MessageBoxW(hwnd, ErrorChecker().message().c_str(), NULL, MB_ICONERROR);
 				}
-			}, hwnd, user, m_rpcEndpoint).detach();
+			}, hwnd, user, L"MyProcControlLiteRpc_" + svc).detach();
 		}),
 	});
 	icon.setMenu(&menu);

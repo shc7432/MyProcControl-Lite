@@ -7,16 +7,16 @@
       "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\srv.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\remote_caller.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\remote_caller.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\processhelper.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\processhelper.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\srv.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\remote_caller.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\remote_caller.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srvapi.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\srvapi.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{ACF54A11-79DF-4CCF-9B61-594D3EBEC1A9}|XInjectHelper\\XInjectHelper.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\XInjectHelper\\dllmain.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
@@ -30,8 +30,44 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 3,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "main.cpp",
+              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\main.cpp",
+              "RelativeDocumentMoniker": "MyProcControlLite\\main.cpp",
+              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\main.cpp",
+              "RelativeToolTip": "MyProcControlLite\\main.cpp",
+              "ViewState": "AgIAACcAAAAA4QDBHN0YwEQAAAAbAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-08-14T07:00:28.967Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "srvapi.cpp",
+              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srvapi.cpp",
+              "RelativeDocumentMoniker": "MyProcControlLite\\srvapi.cpp",
+              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srvapi.cpp",
+              "RelativeToolTip": "MyProcControlLite\\srvapi.cpp",
+              "ViewState": "AgIAAJoAAAAAAAAAAAASwLYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-08-14T04:16:03.793Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "srv.hpp",
+              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.hpp",
+              "RelativeDocumentMoniker": "MyProcControlLite\\srv.hpp",
+              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.hpp",
+              "RelativeToolTip": "MyProcControlLite\\srv.hpp",
+              "ViewState": "AgIAAAEAAABISwhW1ZMTwBwAAABXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-08-14T07:00:52.959Z"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -40,34 +76,10 @@
               "RelativeDocumentMoniker": "MyProcControlLite\\srv.cpp",
               "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.cpp",
               "RelativeToolTip": "MyProcControlLite\\srv.cpp",
-              "ViewState": "AgIAAO0BAACAxzI2dPsrwPwBAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAIoBAAAAQHEA/T7Sv1sBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-08-11T09:43:32.461Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "remote_caller.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\remote_caller.cpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\remote_caller.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\remote_caller.cpp",
-              "RelativeToolTip": "MyProcControlLite\\remote_caller.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-11T09:26:46.176Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "remote_caller.hpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\remote_caller.hpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\remote_caller.hpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\remote_caller.hpp",
-              "RelativeToolTip": "MyProcControlLite\\remote_caller.hpp",
-              "ViewState": "AgIAADAAAABAJ07udz4wwAcAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-08-11T09:26:08.94Z"
             },
             {
               "$type": "Document",
@@ -80,18 +92,6 @@
               "ViewState": "AgIAAGYAAAAAAAAAAAAAAHgAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-08-11T09:08:19.629Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "processhelper.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\processhelper.cpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\processhelper.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\processhelper.cpp",
-              "RelativeToolTip": "MyProcControlLite\\processhelper.cpp",
-              "ViewState": "AgIAAPAAAAAAAAAAAAAAAAEBAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-10T08:19:21.835Z"
             }
           ]
         }

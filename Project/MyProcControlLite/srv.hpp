@@ -26,6 +26,8 @@ public:
 	// 服务启动
 	virtual void OnStart();
 
+	static int ServiceWorkerProcess(std::wstring name, DWORD ppid, std::string extra_hStop);
+
 protected:
 	// 准备环境
 	void PrepareEnvironment();
