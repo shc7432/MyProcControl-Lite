@@ -19,6 +19,9 @@
     <Filter Include="w32oop\lib">
       <UniqueIdentifier>{f2783a05-9325-4700-a1b7-df17fdcc79b7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Generated">
+      <UniqueIdentifier>{326093b3-e571-4e45-92be-f4d343a4cd9f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -28,12 +31,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="srvapi.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="service_c.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="service_s_wrapper.c">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="srv.cpp">
@@ -104,6 +101,12 @@
     </ClCompile>
     <ClCompile Include="injectusinghelper.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\out\generated\midl\service_c.c">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="service_s_wrapper.c">
+      <Filter>Generated</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -272,10 +275,5 @@
     <Image Include="icon.ico">
       <Filter>资源文件</Filter>
     </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <Midl Include="service.idl">
-      <Filter>源文件</Filter>
-    </Midl>
   </ItemGroup>
 </Project>

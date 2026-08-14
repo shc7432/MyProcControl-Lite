@@ -60,10 +60,8 @@ protected:
 
 	static DWORD WINAPI _MyCrashpadHandler(PVOID pThat);
 
-	void InjectHelperDataEater(HANDLE hPipe);
-
 public:
-	static void __crash(DWORD reason = (DWORD)-1);
+	static __declspec(noreturn) void __crash(DWORD reason = (DWORD)-1);
 
 private:
 	std::wstring m_serviceName;
@@ -93,11 +91,6 @@ public:
 public:
 	friend MyProcControl_Lite::MyWindowsServiceInjectHelper;
 
-private:
-	void __crash(DWORD reason = (DWORD)-1) {
-		return WindowsService::__crash(reason);
-	}
-
 protected:
 	static ServiceCoreProcess* Instance;
 
@@ -105,7 +98,7 @@ protected:
 	int RealEntry();
 
 	std::wstring name;
-	DWORD ppid;
+	DWORD ppid{};
 	std::string extra_hStop;
 
 	std::shared_ptr<WCHAR[]> appPath;
@@ -115,7 +108,7 @@ protected:
 	std::wstring coredll86, coredll64, injector86, injector64;
 
 	MyProcControl_Lite::RpcServer m_rpcServer;
-	HANDLE injector86_in, injector86_out, injector64_in, injector64_out;
+	HANDLE injector86_in{}, injector86_out{}, injector64_in{}, injector64_out{};
 	std::unique_ptr<app::RemoteCaller> injectHelperCaller64, injectHelperCaller86;
 
 };

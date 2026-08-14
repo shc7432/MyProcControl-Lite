@@ -1,8 +1,0 @@
-﻿[
-	uuid(090AA68A-5F96-49E7-ADDB-3D09534833ED),
-	version(1.0)
-]
-interface IServiceRpc
-{
-	int MyProcControlLite_LaunchWithControl([in, string] const wchar_t* application, [in, string] const wchar_t* cmdline, [out] int* bSuccess, [out] unsigned long* error);
-}

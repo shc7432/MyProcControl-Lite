@@ -46,12 +46,13 @@ int WINAPI wWinMain(
 	if (FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED))) __fastfail(FAST_FAIL_FATAL_APP_EXIT);
 	w32oop::util::RAIIHelper comUninit([] { CoUninitialize(); });
 	CLI::App app;
-	string u8type, u8name, u8action, u8ppid, u8extra1;
+	string u8type, u8name, u8action, u8ppid;
+	array<string, 16> u8extras;
 	app.add_option("--type", u8type);
 	app.add_option("--name", u8name);
 	app.add_option("--action", u8action);
 	app.add_option("--ppid", u8ppid);
-	app.add_option("--extra1", u8extra1);
+	for (int i = 0; i < 16; ++i) app.add_option("--extra" + to_string(i + 1), u8extras[i]);
 	try { app.parse(utf16_utf8(GetCommandLineW()), true); } catch (...) {}
 	auto argc = app.count_all();
 	wstring type = utf8_utf16(u8type), name = utf8_utf16(u8name), action = utf8_utf16(u8action), ppid = utf8_utf16(u8ppid);
@@ -67,7 +68,7 @@ int WINAPI wWinMain(
 	}
 
 	if (type == L"service-core-worker") {
-		return ServiceCoreProcess::ServiceWorkerProcess(name, Ppid, u8extra1);
+		return ServiceCoreProcess::ServiceWorkerProcess(name, Ppid, u8extras[0]);
 	}
 
 	if (type == L"session-worker") {
@@ -107,6 +108,30 @@ int WINAPI wWinMain(
 		MessageBoxTimeoutW(NULL, (cdlg.result() == 1) ? L"Allowed" : L"Blocked", L"Consent Test",
 			(cdlg.remember() ? MB_ICONWARNING : MB_ICONINFORMATION) | MB_OK | MB_TOPMOST, 0, 2000);
 		return 0;
+	}
+
+	if (type == L"consent") {
+		if (u8extras[6] != "1883") return ERROR_WRONG_PASSWORD;
+		if (u8extras[8].empty()) return ERROR_INVALID_PARAMETER;
+		auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+		if (hDesk) {
+			SetThreadDesktop(hDesk);
+			CloseDesktop(hDesk);
+		}
+		int ttl = 10;
+		try { ttl = stoi(u8extras[5]); }
+		catch (...) {}
+		wstring text = utf8_utf16(u8extras[7]);
+		wstring nonce = utf8_utf16(u8extras[8]);
+		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
+		ConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
+			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", ttl);
+		cdlg.create();
+		cdlg.show();
+		cdlg.run(&cdlg);
+
+		bool accepted = cdlg.result();
+		return (accepted ? 0xF0000000 : 0x0) | (cdlg.remember() ? 0x0F000000 : 0x0);
 	}
 
 	if (type == L"setup" || (type == L"" && argc < 2)) {

@@ -1,89 +1,88 @@
-﻿#include <Windows.h>
+﻿#include "dll.h"
 #include <detours.h>
-#include <stdio.h>
-#include <string>
+#include <memory>
+#include "hook_process.h"
 using namespace std;
 
-// 原始函数指针
-static BOOL(WINAPI* TrueCreateProcessW)(
-    LPCWSTR lpApplicationName,
-    LPWSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
-    ) = CreateProcessW;
+HMODULE hModule;
+PCWSTR ENDPOINT;
+wstring szDll;
+wstring svcName, svcEndpoint;
 
-// 钩子函数
-BOOL WINAPI HookedCreateProcessW(
-    LPCWSTR lpApplicationName,
-    LPWSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
+
+__declspec(noreturn) void crash() {
+	CONTEXT ctx{}; EXCEPTION_RECORD rec{};
+	rec.ExceptionCode = GetLastError();
+	rec.ExceptionAddress = _ReturnAddress();
+	RtlCaptureContext(&ctx);
+	RaiseFailFastException(&rec, &ctx, 0);
+	__fastfail(2);
+}
+
+
+static std::wstring utf8_utf16(PCSTR utf8Str) {
+	if (utf8Str == nullptr) return L"";
+	int utf8Len = static_cast<int>(strlen(utf8Str));
+	int utf16Len = MultiByteToWideChar(CP_UTF8, 0, utf8Str,
+		utf8Len, nullptr, 0);
+	std::wstring utf16Str(utf16Len, 0);  // 创建一个足够大的wstring来容纳UTF-16字符串
+	MultiByteToWideChar(CP_UTF8, 0, utf8Str, utf8Len,
+		&utf16Str[0], utf16Len);
+	return utf16Str;
+}
+
+
+BOOL APIENTRY DllMain(HMODULE hModule,
+	DWORD  ul_reason_for_call,
+	LPVOID lpReserved
 ) {
-    wstring str;
-    str = L"Attempting to create process: " + wstring(lpApplicationName ? lpApplicationName : L"(null)") + L"\n" +
-        L"Command Line: " + wstring(lpCommandLine ? lpCommandLine : L"(null)") + L"\n" +
-        L"Current Directory: " + wstring(lpCurrentDirectory ? lpCurrentDirectory : L"(null)") + L"\n";
-    if (MessageBoxW(GetForegroundWindow(), str.c_str(), L"Attempting to CreateProcess", MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING | MB_TOPMOST) == IDNO) {
-        SetLastError(ERROR_ACCESS_DENIED);
-        return FALSE;
-    }
+	if (DetourIsHelperProcess())
+		return TRUE;
 
-    // 3. 调用原始函数
-    return TrueCreateProcessW(
-        lpApplicationName,
-        lpCommandLine,
-        lpProcessAttributes,
-        lpThreadAttributes,
-        bInheritHandles,
-        dwCreationFlags,
-        lpEnvironment,
-        lpCurrentDirectory,
-        lpStartupInfo,
-        lpProcessInformation
-    );
-}
+	switch (ul_reason_for_call) {
+	case DLL_PROCESS_ATTACH: {
+		::hModule = hModule;
+		auto app = make_unique<WCHAR[]>(32768);
+		GetModuleFileNameW(hModule, app.get(), 32768);
+		szDll = app.get();
+		{
+			HANDLE hFile = CreateFileW((szDll + L"/../SERVICE").c_str(), FILE_READ_DATA | SYNCHRONIZE,
+				FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (!hFile || hFile == INVALID_HANDLE_VALUE) crash();
+			CHAR buffer[2049]{}; DWORD byte{};
+			if (!ReadFile(hFile, buffer, 2048, &byte, NULL)) crash();
+			CloseHandle(hFile);
+			svcName = utf8_utf16(buffer);
+			svcEndpoint = L"MyProcControlLiteRpc_" + svcName;
+			ENDPOINT = svcEndpoint.c_str();
+		}
 
-// DLL 入口点
-extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
-    if (DetourIsHelperProcess())
-        return TRUE;
-
-    switch (dwReason) {
-    case DLL_PROCESS_ATTACH: {
-        DetourRestoreAfterWith();
-        DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
+		DetourRestoreAfterWith();
+		DetourTransactionBegin();
+		DetourUpdateThread(GetCurrentThread());
 #pragma region 加入 Hooks 代码
-        DetourAttach(&(PVOID&)TrueCreateProcessW, HookedCreateProcessW);
+		DetourAttach(&(PVOID&)TrueCreateProcessW, HookedCreateProcessW);
+		DetourAttach(&(PVOID&)TrueCreateProcessA, HookedCreateProcessA);
 
-        // 更多功能待实现...
+		// 更多功能待实现...
 #pragma endregion
-        DetourTransactionCommit();
-    }
-                           break;
+		DetourTransactionCommit();
+	}
+		break;
 
-    case DLL_PROCESS_DETACH: {
-        DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
+	case DLL_PROCESS_DETACH: {
+		DetourTransactionBegin();
+		DetourUpdateThread(GetCurrentThread());
 #pragma region 移除 Hooks 代码
-        DetourDetach(&(PVOID&)TrueCreateProcessW, HookedCreateProcessW);
+		DetourDetach(&(PVOID&)TrueCreateProcessW, HookedCreateProcessW);
+		DetourDetach(&(PVOID&)TrueCreateProcessA, HookedCreateProcessA);
 
 #pragma endregion
-        DetourTransactionCommit();
-    }
-                           break;
-    }
-    return TRUE;
+		DetourTransactionCommit();
+	}
+		break;
+	}
+	return TRUE;
 }
+
+

@@ -116,6 +116,10 @@
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
     </Manifest>
+    <Midl>
+      <OutputDirectory>
+      </OutputDirectory>
+    </Midl>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -151,6 +155,10 @@
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
     </Manifest>
+    <Midl>
+      <OutputDirectory>
+      </OutputDirectory>
+    </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\w32oop\Concurrency\EventObject.cpp" />
@@ -168,6 +176,7 @@
     <ClCompile Include="..\..\..\w32oop\System\Hooks.cpp" />
     <ClCompile Include="..\..\..\w32oop\System\Registry.cpp" />
     <ClCompile Include="..\..\..\w32oop\System\Service.cpp" />
+    <ClCompile Include="..\out\generated\midl\service_c.c" />
     <ClCompile Include="data_poller.cpp" />
     <ClCompile Include="injectusinghelper.cpp" />
     <ClCompile Include="main.cpp" />
@@ -176,7 +185,6 @@
     <ClCompile Include="remote_caller.cpp" />
     <ClCompile Include="session_worker.cpp" />
     <ClCompile Include="srvapi.cpp" />
-    <ClCompile Include="service_c.c" />
     <ClCompile Include="service_s_wrapper.c" />
     <ClCompile Include="srv.cpp" />
     <ClCompile Include="TrayIconWin.cpp" />
@@ -242,9 +250,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <Midl Include="service.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

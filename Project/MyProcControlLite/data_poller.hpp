@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "targetver.h"
 #include <thread>
+#include <atomic>
 #include <functional>
 #include <string>
 #include <stdexcept>
@@ -17,7 +18,7 @@ namespace app {
         virtual void worker_loop();
         virtual void runScheduledCallback(PVOID, DWORD);
     protected:
-        bool running;
+        std::atomic<bool> running;
         HANDLE hSource, hWorker;
         std::function<void(PVOID, DWORD)> _cb;
     };

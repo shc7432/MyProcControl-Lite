@@ -31,3 +31,5 @@ namespace app {
 	NTSTATUS ResumeProcess(_In_ HANDLE ProcessHandle);
 }
 
+std::wstring GenerateUUIDW();
+

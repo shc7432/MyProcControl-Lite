@@ -108,8 +108,10 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 	remember_checkbox.onChanged([this](EventData& ev) {
 		m_remember = remember_checkbox.checked();
 	});
+	remember_checkbox.enable(m_constructor_data__allow_remember);
 	register_hot_key(true, false, false, 'R', [this](HotKeyProcData& ev) {
 		ev.preventDefault();
+		if (!m_constructor_data__allow_remember) return;
 		remember_checkbox.check(!remember_checkbox.checked());
 		m_remember = remember_checkbox.checked();
 	}, HotKeyOptions::Windowed);

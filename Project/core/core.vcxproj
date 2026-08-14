@@ -121,6 +121,9 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>detours.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Midl>
+      <OutputDirectory>$(SolutionDir)\out\generated\midl\</OutputDirectory>
+    </Midl>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -159,15 +162,28 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>detours.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Midl>
+      <OutputDirectory>$(SolutionDir)\out\generated\midl\</OutputDirectory>
+    </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="dll.h" />
+    <ClInclude Include="hook_process.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\out\generated\midl\service_c.c" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="hook_process.cpp" />
+    <ClCompile Include="rpc.cpp" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="coredll.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="..\shared\service.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -25,6 +25,7 @@ app::DataPoller::DataPoller(HANDLE dataSource, std::function<void(PVOID, DWORD)>
 }
 
 app::DataPoller::~DataPoller() {
+	running = false;
 	if (hWorker) {
 		CancelSynchronousIo(hWorker);
 		if (WaitForSingleObject(hWorker, 3000) == WAIT_TIMEOUT) {

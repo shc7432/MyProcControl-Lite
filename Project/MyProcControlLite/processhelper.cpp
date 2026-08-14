@@ -1,6 +1,7 @@
 ﻿#include "processhelper.h"
 #include <userenv.h>
 #pragma comment(lib, "Userenv.lib")
+#pragma comment(lib, "rpcrt4.lib")
 using namespace std;
 
 FARPROC app::GetProcAddress(HMODULE hModule, PCSTR name) {
@@ -256,4 +257,22 @@ NTSTATUS app::SuspendProcess(_In_ HANDLE ProcessHandle) {
 NTSTATUS app::ResumeProcess(_In_ HANDLE ProcessHandle) {
 	return _InternalSuspendProcess(ProcessHandle, "NtResumeProcess");
 }
+
+
+std::wstring GenerateUUIDW()
+{
+	std::wstring guid;
+	UUID uuid;
+	if (RPC_S_OK != UuidCreate(&uuid)) return guid;
+	wchar_t tmp[37 * 2] = { 0 };
+	wsprintf(tmp, L"%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+		uuid.Data1, uuid.Data2, uuid.Data3,
+		uuid.Data4[0], uuid.Data4[1],
+		uuid.Data4[2], uuid.Data4[3],
+		uuid.Data4[4], uuid.Data4[5],
+		uuid.Data4[6], uuid.Data4[7]);
+	guid.assign(tmp);
+	return guid;
+}
+
 

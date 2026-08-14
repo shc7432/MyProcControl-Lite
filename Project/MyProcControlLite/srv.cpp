@@ -72,7 +72,7 @@ void WindowsService::Run() {
 	MyStartAsServiceW(m_serviceName, srv_main);
 }
 
-void WindowsService::__crash(DWORD reason) {
+__declspec(noreturn) void WindowsService::__crash(DWORD reason) {
 	if (reason == (DWORD)-1) reason = GetLastError();
 	EXCEPTION_RECORD rec{}; CONTEXT ctx{};
 	RtlCaptureContext(&ctx);
@@ -88,7 +88,6 @@ void WindowsService::__crash(DWORD reason) {
 	abort();
 	exit((int)reason);
 	while (1) { __fastfail(FAST_FAIL_STACK_COOKIE_CHECK_FAILURE); }
-	return ((void(*)())0x0)();
 }
 
 DWORD WINAPI WindowsService::ServiceCtrlHandler(DWORD dwControl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext) {
@@ -441,7 +440,6 @@ void WindowsService::ServiceCoreThread() {
 	// Local variables
 	HANDLE serviceWorkerProcess{}, hSwStopEvent{};
 	vector<HANDLE> waitObjects;
-	constexpr DWORD WORKER_SLEEPTIME = 2000;
 	ReportStatus(SERVICE_RUNNING);
 
 	HANDLE hCrashpadHandler{};
@@ -460,7 +458,7 @@ void WindowsService::ServiceCoreThread() {
 		if (!serviceWorkerProcess || WaitForSingleObject(serviceWorkerProcess, 0) == WAIT_OBJECT_0) do {
 			if (serviceWorkerProcess) CloseHandle(serviceWorkerProcess);
 			STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-			wstring cmd = L"workerw --type=service-core-worker --name=\"" + m_serviceName + L"\" --ppid=" +
+			wstring cmd = L"cored --type=service-core-worker --name=\"" + m_serviceName + L"\" --ppid=" +
 				to_wstring(GetCurrentProcessId()) + L" --extra1=" + to_wstring(ULONG_PTR(hSwStopEvent));
 			if (!CreateProcessW(appPath.get(), cmd.data(), NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
 				// TODO: log the failure
@@ -475,7 +473,7 @@ void WindowsService::ServiceCoreThread() {
 
 		// wait
 		waitObjects.push_back(stopEvent);
-		WaitForMultipleObjects((DWORD)waitObjects.size(), waitObjects.data(), FALSE, WORKER_SLEEPTIME);
+		WaitForMultipleObjects((DWORD)waitObjects.size(), waitObjects.data(), FALSE, INFINITE);
 		waitObjects.clear();
 	}
 
@@ -507,17 +505,17 @@ int ServiceCoreProcess::ServiceWorkerProcess(wstring name, DWORD ppid, string ex
 void ServiceCoreProcess::PrepareEnvironment() {
 	appPath = make_shared<WCHAR[]>(32768);
 	GetModuleFileNameW(NULL, appPath.get(), 32768);
-	if (!(GetSystemDirectoryW(system32, 260) && GetTempPathW(260, Temp))) __crash();
+	if (!(GetSystemDirectoryW(system32, 260) && GetTempPathW(260, Temp))) WindowsService::__crash();
 	HMODULE k32 = GetModuleHandleW(L"kernel32.dll");
-	if (!k32) __crash();
+	if (!k32) { WindowsService::__crash(); abort(); }
 	auto GetProcAddress = reinterpret_cast<decltype(&::GetProcAddress)>(::GetProcAddress(k32, "GetProcAddress"));
-	if (!GetProcAddress) __crash();
+	if (!GetProcAddress) { WindowsService::__crash(); abort(); }
 	typedef DWORD(WINAPI* GetTempPath2W_t)(_In_ DWORD BufferLength, _Out_ LPWSTR Buffer);
 	auto GetTempPath2W = (GetTempPath2W_t)GetProcAddress(k32, "GetTempPath2W");
 	if (GetTempPath2W) {
 		memset(Temp, 0, sizeof(Temp));
 		if (!GetTempPath2W(260, Temp)) {
-			if (!GetTempPathW(260, Temp)) __crash();
+			if (!GetTempPathW(260, Temp)) WindowsService::__crash();
 		}
 	}
 	RunDLL_X64 = system32, RunDLL_X86 = system32;
@@ -528,13 +526,37 @@ void ServiceCoreProcess::PrepareEnvironment() {
 	session_res = Temp;
 	session_res = session_res / (L"{E3A082AB-4D74-49A9-9804-DA7C0570C1B4}."s + name);
 	coredll86 = session_res / L"x86" / L"core.dll";
-	if (!FreeResFile(IDR_BIN_COREDLL86, L"BIN", coredll86)) __crash();
+	if (!FreeResFile(IDR_BIN_COREDLL86, L"BIN", coredll86)) WindowsService::__crash();
 	coredll64 = session_res / L"core.dll";
-	if (!FreeResFile(IDR_BIN_COREDLL64, L"BIN", coredll64)) __crash();
+	if (!FreeResFile(IDR_BIN_COREDLL64, L"BIN", coredll64)) WindowsService::__crash();
 	injector86 = session_res / L"X86InjectHelper.dll";
-	if (!FreeResFile(IDR_BIN_INJECTHELPER86, L"BIN", injector86)) __crash();
+	if (!FreeResFile(IDR_BIN_INJECTHELPER86, L"BIN", injector86)) WindowsService::__crash();
 	injector64 = session_res / L"InjectHelper.dll";
-	if (!FreeResFile(IDR_BIN_INJECTHELPER64, L"BIN", injector64)) __crash();
+	if (!FreeResFile(IDR_BIN_INJECTHELPER64, L"BIN", injector64)) WindowsService::__crash();
+
+	auto service_Name = session_res / L"SERVICE";
+	HANDLE hFile = CreateFileW(service_Name.c_str(), GENERIC_ALL, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE || !hFile) WindowsService::__crash();
+	DWORD bytes{};
+	wstring mySvcName = name;
+	string u8data = w32oop::util::str::encodings::utf16_utf8(mySvcName);
+	uint8_t buffer[2048]{};
+	bool isValid = false;
+	if (ReadFile(hFile, buffer, 2048, &bytes, NULL) && bytes == u8data.size()) {
+		isValid = true;
+		for (size_t i = 0, l = (size_t)bytes; i < l; ++i) {
+			if (buffer[i] != u8data[i]) {
+				isValid = false; break;
+			}
+		}
+	}
+	if (!isValid) {
+		SetFilePointer(hFile, 0, 0, FILE_BEGIN);
+		SetEndOfFile(hFile);
+		if (!WriteFile(hFile, u8data.data(), (DWORD)u8data.size(), &bytes, NULL) || bytes != u8data.size())
+			WindowsService::__crash();
+	}
+	CloseHandle(hFile);
 }
 
 
@@ -561,7 +583,7 @@ int ServiceCoreProcess::RealEntry() {
 	});
 
 	// rpc server
-	if (!m_rpcServer.Start(name)) __crash();
+	if (!m_rpcServer.Start(name)) WindowsService::__crash();
 
 	while (1) {
 
@@ -584,7 +606,7 @@ int ServiceCoreProcess::RealEntry() {
 			HANDLE subp_stdin{}, subp_stdout{};
 			if (!(CreatePipe(&subp_stdin, &injector_in, &caninherit, 0) && subp_stdin && injector_in &&
 				CreatePipe(&injector_out, &subp_stdout, &caninherit, 0) && subp_stdout && injector_out)) {
-				__crash();
+				WindowsService::__crash();
 			}
 			si.hStdInput = subp_stdin;
 			si.hStdError = si.hStdOutput = subp_stdout;
@@ -594,7 +616,7 @@ int ServiceCoreProcess::RealEntry() {
 			if (!CreateProcessW(rundll32.c_str(), cmd.data(), NULL, NULL, TRUE,
 				CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
 				// Cannot create helper!!! TODO: Log the event
-				__crash();
+				WindowsService::__crash();
 			}
 			CloseHandle(subp_stdin); CloseHandle(subp_stdout);
 			InjectHelperProcess[index] = pi.hProcess;
@@ -633,7 +655,7 @@ int ServiceCoreProcess::RealEntry() {
 				if (user.empty()) continue;
 				if (sessionProcesses.contains(pWtsSessionInfo[dwI].SessionId)) continue;
 				// launch a worker in this session
-				wstring cmd = L"cored --type=session-worker --name=\"" + name + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
+				wstring cmd = L"workerw --type=session-worker --name=\"" + name + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
 				STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
 				if (!CreateProcessInSession(pWtsSessionInfo[dwI].SessionId, appPath.get(), cmd.data(),
 					NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
