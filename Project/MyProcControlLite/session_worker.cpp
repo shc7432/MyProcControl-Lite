@@ -9,25 +9,10 @@ using namespace std;
 static HANDLE hUIProcess;
 
 int SessionWorker(std::wstring name, DWORD ppid) {
-	if (name.empty()) return ERROR_INVALID_PARAMETER;
+	if (name.empty() || !ppid) return ERROR_INVALID_PARAMETER;
 
-	if (ppid) {
-		HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
-			DWORD ppid = (DWORD)(ULONG_PTR)p;
-			HANDLE hProcess = OpenProcess(GENERIC_READ | SYNCHRONIZE, FALSE, ppid);
-			if (!hProcess) return GetLastError();
-			WaitForSingleObject(hProcess, INFINITE);
-			CloseHandle(hProcess);
-			if (hUIProcess) {
-				TerminateProcess(hUIProcess, -1);
-				CloseHandle(hUIProcess);
-			}
-			ExitProcess(0);
-			return 0;
-		}, (PVOID)(ULONG_PTR)ppid, 0, 0);
-		if (hWaiter) CloseHandle(hWaiter);
-		else return GetLastError();
-	}
+	HANDLE PPID = OpenProcess(GENERIC_READ | SYNCHRONIZE, FALSE, ppid);
+	if (!PPID) return GetLastError();
 
 	DWORD current_session{};
 	ProcessIdToSessionId(GetCurrentProcessId(), &current_session);
@@ -44,6 +29,8 @@ int SessionWorker(std::wstring name, DWORD ppid) {
 		return GetLastError();
 	}
 	while (1) {
+		if (WAIT_OBJECT_0 == WaitForSingleObject(PPID, 0)) break;
+
 		// kill other ui process
 		while (HWND hwnd = FindWindowW(MyProcControl_Lite::UIService::TrayIconWindow(name).get_class_name().c_str(), name.c_str())) {
 			if (SendMessageTimeoutW(hwnd, WM_APP + WM_QUIT, 1868812, 0, SMTO_ABORTIFHUNG | SMTO_BLOCK, 5000, NULL))
@@ -71,7 +58,8 @@ int SessionWorker(std::wstring name, DWORD ppid) {
 		hUIProcess = pi.hProcess;
 		ResumeThread(pi.hThread);
 		CloseHandle(pi.hThread);
-		WaitForSingleObject(pi.hProcess, INFINITE);
+		HANDLE waits[]{ PPID, pi.hProcess };
+		if (WAIT_OBJECT_0 == WaitForMultipleObjects(2, waits, 0, INFINITE)) break;
 		GetExitCodeProcess(pi.hProcess, &code);
 		if (code == ERROR_SHUTDOWN_IN_PROGRESS) Sleep(10000);
 		++nFailure;
@@ -81,5 +69,6 @@ int SessionWorker(std::wstring name, DWORD ppid) {
 	DestroyEnvironmentBlock(pEnv);
 	CloseHandle(can_sync);
 	CloseHandle(hUIProcess);
+	CloseHandle(PPID);
 	return 0;
 }

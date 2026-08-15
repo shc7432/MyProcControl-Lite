@@ -135,7 +135,7 @@ int WINAPI wWinMain(
 		cdlg.run(&cdlg);
 
 		int result = cdlg.result();
-		return result | (cdlg.remember() ? 0x0F000000 : 0x0);
+		return result | (cdlg.remember() ? 0x20000000 : 0);
 	}
 
 	if (type == L"command-line-interface") {

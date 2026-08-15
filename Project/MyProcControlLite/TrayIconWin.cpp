@@ -85,6 +85,14 @@ int MyProcControl_Lite::TrayIconWin_RequestAttachControl(
 
 HICON MyProcControl_Lite::UIService::TrayIconWindow::app_icon;
 
+[[nodiscard]] inline bool IsKeyDown(int vk) noexcept {
+	return (GetAsyncKeyState(vk) & 0x8000) != 0;
+}
+
+[[nodiscard]] inline bool IsKeyUp(int vk) noexcept {
+	return !IsKeyDown(vk);
+}
+
 void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 	icon.setTooltip(L"My Proc Control Lite");
 	icon.onClick([this](EventData& ev) { ev.preventDefault(); LaunchWithControl(); });
@@ -96,6 +104,13 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 			idd.setButtonsText(L"Launch", L"Cancel");
 			auto r = idd.getInput<wstring>(L"Enter the command line:");
 			if (!r.has_value() || r.value().empty()) return;
+			if (IsKeyDown(VK_CONTROL) && IsKeyDown(VK_SHIFT) && 
+				IsKeyUp(VK_MENU) && IsKeyUp(VK_LWIN) && IsKeyUp(VK_RWIN)) {
+				int err = 0;
+				if (!LaunchElevated(r.value(), err)) err = GetLastError();
+				if (err) MessageBoxW(hwnd, ErrorChecker(err).message().c_str(), NULL, MB_ICONERROR | MB_TOPMOST);
+				return;
+			}
 			int err = MyProcControl_Lite::TrayIconWin_RequestLaunchProc(L"",
 				r.value().c_str(), (L"MyProcControlLiteRpc_" + svc).c_str());
 			if (err != ERROR_SUCCESS) handleUserLaunchError(r.value(), err);
@@ -214,32 +229,38 @@ void MyProcControl_Lite::UIService::TrayIconWindow::handleUserLaunchError(wstrin
 			(cmd + L"\r\n\r\n" + L"Do you want to continue?").c_str(), TDCBF_YES_BUTTON | TDCBF_CANCEL_BUTTON,
 			TD_SHIELD_ICON, &u);
 		if (u == IDYES) {
-			auto Memory = cmd.c_str();
-			auto Size = (cmd.size() + 1) * sizeof(decltype(cmd)::value_type);
-
-			SHELLEXECUTEINFOW sei{};
-			sei.cbSize = sizeof(sei);
-			sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-			sei.lpVerb = L"runas";
-			sei.nShow = SW_SHOW;
-			auto program = make_unique<WCHAR[]>(32768);
-			GetModuleFileNameW(NULL, program.get(), 32768);
-			sei.lpFile = program.get();
-			wstring params = format(L"--type=command-line-interface --action=launch "
-				L"--name=\"{}\" --extra1=1 --extra2={} --extra3={} --extra4={}", svc, GetCurrentProcessId(),
-				(ULONG_PTR)Memory, Size);
-			sei.lpParameters = params.c_str();
-			if (ShellExecuteExW(&sei) && sei.hProcess) {
-				WaitForSingleObject(sei.hProcess, INFINITE);
-				DWORD code{};
-				GetExitCodeProcess(sei.hProcess, &code);
-				CloseHandle(sei.hProcess);
-				if (code == ERROR_SUCCESS) return;
-				err = (int)code;
-			}
+			LaunchElevated(cmd, err);
 		}
 	}
 	MessageBoxW(hwnd, ErrorChecker(err).message().c_str(), NULL, MB_ICONERROR);
+}
+
+bool MyProcControl_Lite::UIService::TrayIconWindow::LaunchElevated(wstring cmd, int& err) {
+	auto Memory = cmd.c_str();
+	auto Size = (cmd.size() + 1) * sizeof(decltype(cmd)::value_type);
+
+	SHELLEXECUTEINFOW sei{};
+	sei.cbSize = sizeof(sei);
+	sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+	sei.lpVerb = L"runas";
+	sei.nShow = SW_SHOW;
+	auto program = make_unique<WCHAR[]>(32768);
+	GetModuleFileNameW(NULL, program.get(), 32768);
+	sei.lpFile = program.get();
+	wstring params = format(L"--type=command-line-interface --action=launch "
+		L"--name=\"{}\" --extra1=1 --extra2={} --extra3={} --extra4={}", svc, GetCurrentProcessId(),
+		(ULONG_PTR)Memory, Size);
+	sei.lpParameters = params.c_str();
+	if (ShellExecuteExW(&sei) && sei.hProcess) {
+		WaitForSingleObject(sei.hProcess, INFINITE);
+		DWORD code{};
+		GetExitCodeProcess(sei.hProcess, &code);
+		CloseHandle(sei.hProcess);
+		if (code == ERROR_SUCCESS) return true;
+		err = (int)code;
+		return true;
+	}
+	else return false;
 }
 
 

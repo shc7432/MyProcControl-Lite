@@ -90,8 +90,10 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 		dwCreationFlags, lpEnvironment ? lpEnvironment : pEnv,
 		lpCurrentDirectory, lpStartupInfo, lpProcessInformation))
 	{
-		CloseHandle(hUserTokenDup);
-		CloseHandle(hPToken);
+		if (pEnv) DestroyEnvironmentBlock(pEnv);
+		//if (hUserToken) CloseHandle(hUserToken);
+		if (hUserTokenDup) CloseHandle(hUserTokenDup);
+		if (hPToken) CloseHandle(hPToken);
 		return FALSE;
 	}
 

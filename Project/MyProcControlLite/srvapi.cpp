@@ -302,6 +302,7 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	if (!NT_SUCCESS(app::SuspendProcess(hCaller))) {
 		*bSuccess = 0;
 		*error = GetLastError();
+		CloseHandle(hToken);
 		return 0;
 	}
 	w32oop::util::RAIIHelper c([&] { CloseHandle(hToken); app::ResumeProcess(hCaller); });
@@ -384,7 +385,7 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		GetExitCodeProcess(pi.hProcess, &code);
 		CloseHandle(pi.hProcess);
 
-		bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000,
+		bool acc = code & 0x10000000, remember = code & 0x20000000, kill = code & 0x00100000, uninstall = code & 0x00200000,
 			blockUntil = code & 0x00400000;
 		// TODO: implement remember
 		if (blockUntil) {
@@ -461,19 +462,17 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 			*error = GetLastError();
 			if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 			if (pEnv) DestroyEnvironmentBlock(pEnv);
-			CloseHandle(hToken);
 			*bSuccess = 0;
 			return 0;
 		}
 		CloseHandle(pi.hThread);
 		auto PathPtr = make_shared<WCHAR[]>(32768);DWORD size = 32768;
-		if (!QueryFullProcessImageNameW(hCaller, 0, PathPtr.get(), &size)) {
+		if (!QueryFullProcessImageNameW(pi.hProcess, 0, PathPtr.get(), &size)) {
 			*error = GetLastError();
 			TerminateProcess(pi.hProcess, 0);
 			CloseHandle(pi.hProcess);
 			if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 			if (pEnv) DestroyEnvironmentBlock(pEnv);
-			CloseHandle(hToken);
 			*bSuccess = 0;
 			return 0;
 		}
@@ -490,13 +489,11 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		*error = GetLastError();
 		if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 		if (pEnv) DestroyEnvironmentBlock(pEnv);
-		CloseHandle(hToken);
 		*bSuccess = 0;
 		return 0;
 	}
 	if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 	if (pEnv) DestroyEnvironmentBlock(pEnv);
-	CloseHandle(hToken);
 
 	BOOL isWOW{};
 	if (!IsWow64Process(pi.hProcess, &isWOW) || !MyProcControl_Lite::InjectCoreDllUsingHelper(pi.dwProcessId, isWOW)) {
@@ -670,7 +667,7 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	GetExitCodeProcess(pi.hProcess, &code);
 	CloseHandle(pi.hProcess);
 
-	bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000,
+	bool acc = code & 0x10000000, remember = code & 0x20000000, kill = code & 0x00100000, uninstall = code & 0x00200000,
 		blockUntil = code & 0x00400000;
 	// TODO: implement remember
 	if (acc) return 1;
@@ -730,6 +727,7 @@ int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long
 
 	if (!NT_SUCCESS(app::SuspendProcess(hCaller))) {
 		*error = GetLastError();
+		CloseHandle(hToken);
 		return 0;
 	}
 	w32oop::util::RAIIHelper c([&] { CloseHandle(hToken); app::ResumeProcess(hCaller); });
@@ -748,7 +746,10 @@ int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long
 			break;
 		}
 		HANDLE hThread = CreateRemoteThread(hProcess, NULL, NULL, (LPTHREAD_START_ROUTINE)(ULONG_PTR)1, NULL, CREATE_SUSPENDED, NULL);
-		if (!hThread) break;
+		if (!hThread) {
+			CloseHandle(hProcess);
+			break;
+		}
 #pragma warning(push)
 #pragma warning(disable: 6258)
 		TerminateThread(hThread, 0);

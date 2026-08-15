@@ -58,6 +58,7 @@ MyProcControl_Lite::ConsentDialog::~ConsentDialog() {
 	if (m_hTitleFont) DeleteObject(m_hTitleFont);
 	if (m_hLinePen) DeleteObject(m_hLinePen);
 	if (contentFont) DeleteObject(contentFont);
+	if (btnFont) DeleteObject(btnFont);
 }
 
 
@@ -84,7 +85,7 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 	deny_button.font(btnFont);
 
 	allow_button.onClick([this](EventData&) {
-		m_result = 0xF0000000;
+		m_result = 0x10000000;
 		notExited = false;
 		this->close();
 	});
@@ -101,7 +102,7 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 
 	register_hot_key(true, false, false, VK_RETURN, [this](HotKeyProcData& ev) {
 		ev.preventDefault();
-		m_result = 0xF0000000;
+		m_result = 0x10000000;
 		notExited = false;
 		this->close();
 	}, HotKeyOptions::Windowed);
