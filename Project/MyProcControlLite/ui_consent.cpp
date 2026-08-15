@@ -96,46 +96,7 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 	deny_button.on(BCN_DROPDOWN, [this](EventData& ev) {
 		if (!m_constructor_data__allow_extras) return;
 		ev.preventDefault();
-		RECT rc{}; GetWindowRect(deny_button, &rc);
-		int ret = Menu({
-			MenuItem(m_constructor_data__deny_button_text, 1),
-			MenuItem::separator(),
-			MenuItem(L"Block all further requests within...", {
-				MenuItem(L"5 seconds", 5),
-				MenuItem(L"10 seconds", 10),
-				MenuItem(L"30 seconds", 30),
-				MenuItem(L"1 minute", 60),
-				MenuItem(L"2 minutes", 120),
-				MenuItem(L"5 minutes", 300),
-				MenuItem(L"10 minutes", 600),
-				MenuItem(L"15 minutes", 900),
-				MenuItem(L"20 minutes", 1200),
-				MenuItem(L"30 minutes", 1800),
-				MenuItem(L"45 minutes", 60 * 45),
-				MenuItem(L"1 hour", 3600),
-				MenuItem(L"2 hour", 7200),
-				MenuItem(L"5 hour", 3600 * 5),
-				MenuItem(L"6 hour", 3600 * 6),
-				MenuItem(L"12 hour", 3600 * 12),
-				MenuItem(L"1 day", 86400),
-			}),
-			MenuItem::separator(),
-			MenuItem(L"Close the application", 2),
-			MenuItem(L"Close and uninstall the application", 3),
-		}).pop(rc.left, rc.bottom);
-		if (!ret) return;
-		switch (ret) {
-		case 2:
-			m_result = 0x00100000;
-			break;
-		case 3:
-			m_result = 0x00200000;
-			break;
-		default:
-			m_result = 0x00400000 + ret;
-		}
-		notExited = false;
-		this->close();
+		showMoreOptions();
 	});
 
 	register_hot_key(true, false, false, VK_RETURN, [this](HotKeyProcData& ev) {
@@ -162,6 +123,15 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 		if (!m_constructor_data__allow_remember) return;
 		remember_checkbox.check(!remember_checkbox.checked());
 		m_remember = remember_checkbox.checked();
+	}, HotKeyOptions::Windowed);
+	register_hot_key(true, false, true, 'C', [this](HotKeyProcData& ev) {
+		ev.preventDefault();
+		if (!doCopy()) MessageBoxW(NULL, ErrorChecker().message().c_str(), L"Cannot Copy", MB_ICONERROR);
+	}, HotKeyOptions::Windowed);
+	register_hot_key(false, false, true, VK_F10, [this](HotKeyProcData& ev) {
+		if (!m_constructor_data__allow_extras) return;
+		ev.preventDefault();
+		showMoreOptions();
 	}, HotKeyOptions::Windowed);
 
 	// -------
@@ -239,7 +209,90 @@ void MyProcControl_Lite::ConsentDialog::onPaint(EventData& ev) {
 	EndPaint(hwnd, &ps);
 }
 
-void MyProcControl_Lite::ConsentDialog::onFocus(EventData& ev)
-{
+void MyProcControl_Lite::ConsentDialog::onFocus(EventData& ev) {
 	set_topmost(true);
 }
+
+void MyProcControl_Lite::ConsentDialog::showMoreOptions() {
+	RECT rc{}; GetWindowRect(deny_button, &rc);
+	int ret = Menu({
+		MenuItem(m_constructor_data__deny_button_text, 1),
+		MenuItem::separator(),
+		MenuItem(L"&Copy\tCtrl+Shift+C", 4),
+		MenuItem::separator(),
+		MenuItem(L"&Block all further requests within...", {
+			MenuItem(L"5 seconds", 5),
+			MenuItem(L"10 seconds", 10),
+			MenuItem(L"30 seconds", 30),
+			MenuItem(L"1 minute", 60),
+			MenuItem(L"2 minutes", 120),
+			MenuItem(L"5 minutes", 300),
+			MenuItem(L"10 minutes", 600),
+			MenuItem(L"15 minutes", 900),
+			MenuItem(L"20 minutes", 1200),
+			MenuItem(L"30 minutes", 1800),
+			MenuItem(L"45 minutes", 60 * 45),
+			MenuItem(L"1 hour", 3600),
+			MenuItem(L"2 hour", 7200),
+			MenuItem(L"5 hour", 3600 * 5),
+			MenuItem(L"6 hour", 3600 * 6),
+			MenuItem(L"12 hour", 3600 * 12),
+			MenuItem(L"1 day", 86400),
+		}),
+		MenuItem::separator(),
+		MenuItem(L"C&lose the application", 2),
+		MenuItem(L"Close and &uninstall the application", 3),
+	}).pop(rc.left, rc.bottom);
+	if (!ret) return;
+	switch (ret) {
+	case 1:
+		m_result = 0;
+		break;
+	case 2:
+		m_result = 0x00100000;
+		break;
+	case 3:
+		m_result = 0x00200000;
+		break;
+	case 4:
+		if (!doCopy()) MessageBoxW(NULL, ErrorChecker().message().c_str(), L"Cannot Copy", MB_ICONERROR);
+		return;
+		break;
+	default:
+		m_result = 0x00400000 + ret;
+	}
+	notExited = false;
+	this->close();
+}
+
+bool MyProcControl_Lite::ConsentDialog::doCopy() {
+	wstring text;
+
+	// get data
+	text = L"[Window Title]\r\nPermission Request\r\n\r\n[Main Instruction]\r\n" + operation_content.text() +
+		L"\r\n\r\n[Content]\r\n" + m_constructor_data__details + format(L"\r\n\r\n[{}] [{}]\r\n[{}] Remember my choice for {}",
+			m_constructor_data__allow_button_text, m_constructor_data__deny_button_text, remember_checkbox.checked() ? L"x" : L" ",
+			m_constructor_data__app_name);
+
+	// do copy
+	if (text.empty() || !OpenClipboard(hwnd)) return false;
+	EmptyClipboard();
+	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, (text.size() + 1) * sizeof(wchar_t));
+	if (!hMem) {
+		CloseClipboard();
+		return false;
+	}
+	wchar_t* pBuf = (wchar_t*)GlobalLock(hMem);
+	if (!pBuf) {
+		CloseClipboard();
+		return false;
+	}
+	wcscpy_s(pBuf, (text.size() + 1), text.c_str());
+	GlobalUnlock(hMem);
+	SetClipboardData(CF_UNICODETEXT, hMem);
+	CloseClipboard();
+	MessageBeep(MB_ICONINFORMATION);
+	return true;
+}
+
+

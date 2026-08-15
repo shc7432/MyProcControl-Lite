@@ -386,7 +386,7 @@ bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
 	}
 
 	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (!hSnapshot) {
+	if (!hSnapshot || hSnapshot == INVALID_HANDLE_VALUE) {
 		CloseHandle(hProcess);
 		return false;
 	}
@@ -423,6 +423,32 @@ bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
 
 	CloseHandle(hProcess);
 	return ok;
+}
+
+
+DWORD app::GetCurrentProcessPPID() {
+	DWORD ppid = 0;
+	DWORD currentPid = GetCurrentProcessId();
+
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (!hSnapshot || hSnapshot == INVALID_HANDLE_VALUE) {
+		return 0;
+	}
+
+	PROCESSENTRY32W pe32{};
+	pe32.dwSize = sizeof(PROCESSENTRY32W);
+
+	if (Process32FirstW(hSnapshot, &pe32)) {
+		do {
+			if (pe32.th32ProcessID == currentPid) {
+				ppid = pe32.th32ParentProcessID;
+				break;
+			}
+		} while (Process32NextW(hSnapshot, &pe32));
+	}
+
+	CloseHandle(hSnapshot);
+	return ppid;
 }
 
 

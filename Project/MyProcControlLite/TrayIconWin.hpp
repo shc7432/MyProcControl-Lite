@@ -30,9 +30,14 @@ protected:
 		});
 	}
 	static HICON myicon();
+
+	void LaunchWithControl();
+	void handleUserLaunchError(wstring cmd, int err);
 };
 
 }
+
+int TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint);
 
 int TrayIconWin_RequestAttachControl(
 	unsigned long pid,

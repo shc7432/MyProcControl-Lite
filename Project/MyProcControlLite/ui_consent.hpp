@@ -48,6 +48,9 @@ private:
 	void onPaint(EventData& ev);
 	void onFocus(EventData& ev);
 
+	void showMoreOptions();
+	bool doCopy();
+
 	virtual void setup_event_handlers() override {
 		WINDOW_add_handler(WM_NCHITTEST, [this](EventData& ev) {
 			ev.returnValue(HTCAPTION);

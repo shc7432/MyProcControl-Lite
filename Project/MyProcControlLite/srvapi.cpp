@@ -334,12 +334,13 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		// non-interactive session, make it interactive
 		dwSessionId = WTSGetActiveConsoleSessionId();
 	}
+	auto _gg = AcquireSessionConsentUILock(dwSessionId);
 	if (consentUI_BlockUntil.contains(dwSessionId)) do {
 		std::lock_guard gg(consentUI_BlockUntil_accessLock);
 		if (!consentUI_BlockUntil.contains(dwSessionId)) break;
 		if (time(0) < consentUI_BlockUntil.at(dwSessionId)) {
 			*bSuccess = 0;
-			*error = ERROR_ACCESS_DENIED;
+			*error = 0xC0000022;
 			return 0;
 		}
 		consentUI_BlockUntil.erase(dwSessionId);
@@ -367,7 +368,6 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 			w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce, sig
 		); // TODO: add i18n; allow remember; allow customize timeout
 		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-		auto _gg = AcquireSessionConsentUILock(dwSessionId);
 		if (!CreateProcessInSession(dwSessionId, appPath.get(), cmd.data(),
 			NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
 			*bSuccess = 0;
@@ -452,16 +452,51 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	}
 
 	wstring cmd = cmdline;
-	if (!CreateProcessAsUserW(hToken, application, cmd.data(),
-		NULL, NULL, FALSE, flags, pEnv, NULL, (LPSTARTUPINFOW)&si, &pi)) {
+	wstring realexe, cd;
+	// create a virtual process first to get its real location.
+	{
+		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+		if (!CreateProcessW(application[0] ? application : NULL, cmd.data(),
+			NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
+			*error = GetLastError();
+			if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
+			if (pEnv) DestroyEnvironmentBlock(pEnv);
+			CloseHandle(hToken);
+			*bSuccess = 0;
+			return 0;
+		}
+		CloseHandle(pi.hThread);
+		auto PathPtr = make_shared<WCHAR[]>(32768);DWORD size = 32768;
+		if (!QueryFullProcessImageNameW(hCaller, 0, PathPtr.get(), &size)) {
+			*error = GetLastError();
+			TerminateProcess(pi.hProcess, 0);
+			CloseHandle(pi.hProcess);
+			if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
+			if (pEnv) DestroyEnvironmentBlock(pEnv);
+			CloseHandle(hToken);
+			*bSuccess = 0;
+			return 0;
+		}
+		realexe = PathPtr.get();
+		size_t pos = realexe.find_last_of(L'\\');
+		if (pos != std::wstring::npos) {
+			cd = realexe.substr(0, pos);
+		}
+		TerminateProcess(pi.hProcess, 0);
+		CloseHandle(pi.hProcess);
+	}
+	if (!CreateProcessAsUserW(hToken, application[0] ? application : NULL, cmd.data(),
+		NULL, NULL, FALSE, flags, pEnv, cd.empty() ? NULL : cd.c_str(), (LPSTARTUPINFOW)&si, &pi)) {
 		*error = GetLastError();
 		if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 		if (pEnv) DestroyEnvironmentBlock(pEnv);
+		CloseHandle(hToken);
 		*bSuccess = 0;
 		return 0;
 	}
 	if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 	if (pEnv) DestroyEnvironmentBlock(pEnv);
+	CloseHandle(hToken);
 
 	BOOL isWOW{};
 	if (!IsWow64Process(pi.hProcess, &isWOW) || !MyProcControl_Lite::InjectCoreDllUsingHelper(pi.dwProcessId, isWOW)) {
@@ -576,6 +611,7 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		// non-interactive session, make it interactive
 		dwSessionId = WTSGetActiveConsoleSessionId();
 	}
+	auto _gg = AcquireSessionConsentUILock(dwSessionId);
 	if (consentUI_BlockUntil.contains(dwSessionId)) do {
 		std::lock_guard gg(consentUI_BlockUntil_accessLock);
 		if (!consentUI_BlockUntil.contains(dwSessionId)) break;
@@ -619,7 +655,6 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce, sig
 	); // TODO: add i18n; allow remember; allow customize timeout
 	STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-	auto _gg = AcquireSessionConsentUILock(dwSessionId);
 	if (!CreateProcessInSession(dwSessionId, appPath.get(), cmd.data(),
 		NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
 		*custom_err_code = GetLastError();

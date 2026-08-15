@@ -109,6 +109,7 @@ int WINAPI wWinMain(
 		wstring text_raw = text, nonce = utf8_utf16(u8extras[8]);
 		if (!MyProcControl_Lite::ConsentVerifySignature(text_raw, signature, L"MyProcControlLiteRpc_" + name))
 			return ERROR_ACCESS_DENIED;
+		EnableAllPrivileges(NULL);
 		auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
 		if (hDesk) {
 			SetThreadDesktop(hDesk);
@@ -121,6 +122,15 @@ int WINAPI wWinMain(
 		ConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
 			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
 		cdlg.create();
+		HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
+			HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
+			if (!hProcess) return GetLastError();
+			if (WAIT_OBJECT_0 != WaitForSingleObject(hProcess, INFINITE)) return GetLastError();
+			CloseHandle(hProcess);
+			ExitProcess(0);
+			return 0;
+		}, (PVOID)(ULONG_PTR)app::GetCurrentProcessPPID(), 0, 0);
+		if (hWaiter) CloseHandle(hWaiter);
 		cdlg.show();
 		cdlg.run(&cdlg);
 

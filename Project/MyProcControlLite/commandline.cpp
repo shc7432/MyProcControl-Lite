@@ -27,6 +27,24 @@ int RunCommandLineInterface(std::wstring name, std::wstring action, const std::a
 		}
 		return 0;
 	}
+	else if (action == L"launch") {
+		if (u8extras[0] != "1") return 87;
+		try {
+			DWORD pid = stoi(u8extras[1]);
+			auto mem = (ULONG_PTR)stoull(u8extras[2]);
+			auto size = (SIZE_T)stoull(u8extras[3]);
+			if (size > 65536) return ERROR_INSUFFICIENT_BUFFER;
+			w32ProcessHandle hProcess = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ, FALSE, pid);
+			auto Mybuf = make_unique<uint8_t[]>(size + 1); SIZE_T r{};
+			if (!ReadProcessMemory(hProcess, (LPCVOID)mem, Mybuf.get(), size, &r)) return GetLastError();
+			auto Mydata = (PCWSTR)Mybuf.get();
+			return MyProcControl_Lite::TrayIconWin_RequestLaunchProc(L"", Mydata, (L"MyProcControlLiteRpc_" + name).c_str());
+		}
+		catch (...) {
+			return GetLastError();
+		}
+		return 0;
+	}
 	else return 87;
 }
 
