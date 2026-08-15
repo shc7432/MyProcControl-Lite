@@ -17,6 +17,7 @@ private:
 	bool m_constructor_data__allow_extras;
 
 private:
+	w32EventHandle hCloseEvent;
 	HBRUSH m_hWhiteBrush = nullptr;
 	HFONT m_hTitleFont = nullptr;
 	HPEN m_hLinePen = nullptr;

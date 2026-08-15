@@ -18,6 +18,8 @@ MyProcControl_Lite::ConsentDialog::ConsentDialog(
 	m_result = 0;
 	m_remember = false;
 
+	hCloseEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+
 	// 创建白色背景画刷
 	m_hWhiteBrush = CreateSolidBrush(RGB(0xFF, 0xFF, 0xFF));
 
@@ -166,7 +168,7 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 				return;
 			}
 			deny_button.text(origText + L" (" + to_wstring(times) + L")");
-			this_thread::sleep_for(chrono::seconds(1));
+			WaitForSingleObject(hCloseEvent, 1000);
 			--times;
 		};
 	});
@@ -174,8 +176,9 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 	thread([this] { force_focus(); }).detach();
 }
 
-void MyProcControl_Lite::ConsentDialog::onDestroy()
-{
+void MyProcControl_Lite::ConsentDialog::onDestroy() {
+	notExited = false;
+	SetEvent(hCloseEvent);
 	if (timer_thread.joinable()) timer_thread.join();
 }
 
