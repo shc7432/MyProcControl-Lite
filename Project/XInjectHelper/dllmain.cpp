@@ -32,6 +32,15 @@ VOID WINAPI RunDLL(HWND, HINSTANCE, PSTR, int) {
 	int argc{};
 	wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	if (argc < 7) ExitProcess(ERROR_INSUFFICIENT_LOGON_INFO);
+	HMODULE k32 = GetModuleHandleW(L"kernel32.dll");
+	if (!k32) __fastfail(FAST_FAIL_STACK_COOKIE_CHECK_FAILURE);
+	auto GetProcAddress = reinterpret_cast<decltype(&::GetProcAddress)>(::GetProcAddress(k32, "GetProcAddress"));
+	if (!GetProcAddress) __fastfail(FAST_FAIL_STACK_COOKIE_CHECK_FAILURE);
+	PROCESS_MITIGATION_CHILD_PROCESS_POLICY f{};
+	f.NoChildProcessCreation = 1;
+	auto SetProcessMitigationPolicy = reinterpret_cast<BOOL(WINAPI*)(PROCESS_MITIGATION_POLICY, PVOID, SIZE_T)>
+		(GetProcAddress(k32, "SetProcessMitigationPolicy"));
+	if (SetProcessMitigationPolicy) SetProcessMitigationPolicy(ProcessChildProcessPolicy, &f, sizeof f);
 	if (argv[3] != L"/password=0812"s) ExitProcess(ERROR_WRONG_PASSWORD);
 	if (argv[2] == L"/=DbgServiceKeepAlive"s) {
 		if (argv[4] != L"/ppid"s) ExitProcess(ERROR_INVALID_PARAMETER);

@@ -1,6 +1,6 @@
 ﻿#include "session_worker.hpp"
 #include <userenv.h>
-#include "TrayIcon.hpp"
+#include "TrayIconWin.hpp"
 #include <memory>
 #include <wtsapi32.h>
 #pragma comment(lib, "wtsapi32.lib")

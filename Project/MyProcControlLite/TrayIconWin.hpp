@@ -32,7 +32,11 @@ protected:
 	static HICON myicon();
 };
 
-
-
 }
+
+int TrayIconWin_RequestAttachControl(
+	unsigned long pid,
+	unsigned long* errorp,
+	PCWSTR endpoint
+);
 }

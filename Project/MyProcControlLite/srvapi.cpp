@@ -18,12 +18,18 @@ int MyProcControlLite_ConsentUI_CheckAuthorization_Impl2(handle_t IDL_handle, co
 int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR application, PCWSTR cmdline, int* bSuccess, unsigned long* error);
 int MyProcControlLite_Consent_CreateProcess_Impl2(
 	/* [in] */ handle_t IDL_handle,
+	int type,
 	const wchar_t* application,
 	const wchar_t* cmdline,
 	int inherithandles,
 	unsigned long flags,
 	const wchar_t* cd,
 	unsigned long sisize,
+	unsigned long long token_value,
+	unsigned long logon_flags,
+	const wchar_t* username,
+	const wchar_t* domain,
+	const wchar_t* password,
 	unsigned long* custom_err_code
 );
 int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long dwProcessId, unsigned long* error);
@@ -78,22 +84,34 @@ int MyProcControlLite_LaunchWithControl_Impl(
 
 int MyProcControlLite_Consent_CreateProcess_Impl(
 	/* [in] */ handle_t IDL_handle,
+	int type,
 	const wchar_t* application,
 	const wchar_t* cmdline,
 	int inherithandles,
 	unsigned long flags,
 	const wchar_t* cd,
 	unsigned long sisize,
+	unsigned long long token_value,
+	unsigned long logon_flags,
+	const wchar_t* username,
+	const wchar_t* domain,
+	const wchar_t* password,
 	unsigned long* custom_err_code
 ) {
 	return MyProcControlLite_Consent_CreateProcess_Impl2(
 		IDL_handle,
+		type,
 		application,
 		cmdline,
 		inherithandles,
 		flags,
 		cd,
 		sisize,
+		token_value,
+		logon_flags,
+		username,
+		domain,
+		password,
 		custom_err_code
 	);
 }
@@ -305,6 +323,10 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		*error = GetLastError();
 		return 0;
 	}
+	if (dwSessionId == 0) {
+		// non-interactive session, make it interactive
+		dwSessionId = WTSGetActiveConsoleSessionId();
+	}
 	if (!SetTokenInformation(hToken, TokenSessionId, (void*)&dwSessionId, sizeof(DWORD))) {
 		*bSuccess = 0;
 		*error = GetLastError();
@@ -431,12 +453,18 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 
 int MyProcControlLite_Consent_CreateProcess_Impl2(
 	/* [in] */ handle_t IDL_handle,
+	int type,
 	const wchar_t* application,
 	const wchar_t* cmdline,
 	int inherithandles,
 	unsigned long flags,
 	const wchar_t* cd,
 	unsigned long sisize,
+	unsigned long long token_value,
+	unsigned long logon_flags,
+	const wchar_t* username,
+	const wchar_t* domain,
+	const wchar_t* password,
 	unsigned long* custom_err_code
 ) {
 	// get caller info
@@ -454,6 +482,19 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		if (custom_err_code) *custom_err_code = ERROR_INVALID_PARAMETER;
 		return 0;
 	}
+
+	wstring type_s;
+	static const std::map<int, wstring> type_s_map{
+		{0, L"CreateProcess"},
+		{1, L"CreateProcessAsUser"},
+		{2, L"CreateProcessWithToken"},
+		{3, L"CreateProcessWithLogon"},
+	};
+	if (!type_s_map.contains(type)) {
+		if (custom_err_code) *custom_err_code = ERROR_INVALID_PARAMETER;
+		return 0;
+	}
+	type_s = type_s_map.at(type);
 
 	w32ProcessHandle hCaller;
 	try {
@@ -494,12 +535,31 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		*custom_err_code = GetLastError();
 		return 0;
 	}
+	if (dwSessionId == 0) {
+		// non-interactive session, make it interactive
+		dwSessionId = WTSGetActiveConsoleSessionId();
+	}
 
 	// spawn a consent dialog
-	wstring detailedDetails = std::format(
+	wstring detailedDetails;
+	if (type == 0 || type == 1) detailedDetails = std::format(
 		L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nInherit handles?: {}\n"
-		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}\nCommand line:\n{}",
+		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}{}\nCommand line:\n{}",
 		client_pid, callerName, callerPath, application, inherithandles ? L"Yes" : L"No",
+		flags, cd, sisize, (type == 1) ? format(L"\nToken value: {}", token_value) : L"", cmdline
+	);
+	else if (type == 2) detailedDetails = std::format(
+		L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nToken value: {}\nLogon flags: {}\n"
+		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}\nCommand line:\n{}",
+		client_pid, callerName, callerPath, application, token_value, logon_flags,
+		flags, cd, sisize, cmdline
+	);
+	else if (type == 3) detailedDetails = std::format(
+		L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\n"
+		L"Username: {}\nDomain: {}\nPassword: {}\nLogon flags: {}\n"
+		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}\nCommand line:\n{}",
+		client_pid, callerName, callerPath, application,
+		username, domain, password, logon_flags,
 		flags, cd, sisize, cmdline
 	);
 	wstring randomNonce = GenerateUUIDW();
@@ -507,9 +567,9 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	wstring sig = calculate_consent_sig(detailedDetails);
 	w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
 	wstring cmd = std::format(L"consent.exe --type=consent --name=\"{}\" "
-		L"--extra1=\"{}\" --extra2=CreateProcess --extra3=Allow --extra4=Deny "
+		L"--extra1=\"{}\" --extra2={} --extra3=Allow --extra4=Deny "
 		L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --signature={}",
-		ServiceCoreProcess::Instance->getName(), callerName,
+		ServiceCoreProcess::Instance->getName(), callerName, type_s,
 		w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce, sig
 	); // TODO: add i18n; allow remember; allow customize timeout
 	STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};

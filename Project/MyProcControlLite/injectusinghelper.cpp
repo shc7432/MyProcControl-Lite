@@ -28,6 +28,10 @@ BOOL MyProcControl_Lite::MyWindowsServiceInjectHelper::InjectCoreDllUsingHelper(
 
 
 BOOL MyProcControl_Lite::MyWindowsServiceInjectHelper::InjectUsingHelper(DWORD dwProcessId, BOOL isWOW, std::wstring DLL) {
+	if (dwProcessId == GetCurrentProcessId() || dwProcessId == ServiceCoreProcess::Instance->ppid) {
+		SetLastError(0xC0000010);
+		return FALSE;
+	}
 	auto& p = isWOW ? ServiceCoreProcess::Instance->injectHelperCaller86 : ServiceCoreProcess::Instance->injectHelperCaller64;
 	if (!p) {
 		SetLastError(STATUS_ACCESS_VIOLATION);

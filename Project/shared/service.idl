@@ -10,5 +10,5 @@ interface IServiceRpc
 
 	int MyProcControlLite_RequestAddControl([in] unsigned long dwProcessId, [out] unsigned long* error);
 
-	int MyProcControlLite_Consent_CreateProcess([in, string] const wchar_t* application, [in, string] const wchar_t* cmdline, [in] int inherithandles, [in] unsigned long flags, [in, string] const wchar_t* cd, [in] unsigned long sisize, [out] unsigned long* custom_err_code);
+	int MyProcControlLite_Consent_CreateProcess([in] int type, [in, string] const wchar_t* application, [in, string] const wchar_t* cmdline, [in] int inherithandles, [in] unsigned long flags, [in, string] const wchar_t* cd, [in] unsigned long sisize, [in] unsigned long long token_value, [in] unsigned long logon_flags, [in, string] const wchar_t* username, [in, string] const wchar_t* domain, [in, string] const wchar_t* password, [out] unsigned long* custom_err_code);
 }

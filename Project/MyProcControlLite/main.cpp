@@ -8,7 +8,9 @@
 #include "processhelper.h"
 #include "session_worker.hpp"
 #include "ui_consent.hpp"
-#include "TrayIcon.hpp"
+#include "setupui.h"
+#include "commandline.h"
+#include "TrayIconWin.hpp"
 using namespace std;
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
@@ -126,117 +128,12 @@ int WINAPI wWinMain(
 		return (accepted ? 0xF0000000 : 0x0) | (cdlg.remember() ? 0x0F000000 : 0x0);
 	}
 
+	if (type == L"command-line-interface") {
+		return RunCommandLineInterface(name, action, u8extras);
+	}
+
 	if (type == L"setup" || (type == L"" && argc < 2)) {
-		INITCOMMONCONTROLSEX icce{};
-		icce.dwSize = sizeof(icce);
-		icce.dwICC = ICC_ALL_CLASSES;
-		InitCommonControlsEx(&icce);
-		if (name.empty()) name = L"MyProcControl-Lite";
-		if (action.empty()) {
-			int btn = 0;
-			TaskDialog(NULL, hInstance, L"MyProcControl (Lite) Setup", L"What would you want to do?", 
-				L"Press [Yes] to Install.\n"
-				L"Press [No] to Uninstall.\n"
-				L"Press [Cancel] to cancel.\n",
-				TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON,
-				TD_INFORMATION_ICON,
-				&btn
-			);
-			if (btn == IDYES) action = L"install";
-			else if (btn == IDNO) action = L"uninstall";
-			else return ERROR_CANCELLED;
-			if (!IsUserAnAdmin()) {
-				setup_askprivilege:
-				TaskDialog(NULL, hInstance, L"MyProcControl (Lite) Setup",
-					L"Administrators privilege is required to install or modify the product.",
-					L"Press Yes to continue.",
-					TDCBF_YES_BUTTON | TDCBF_CANCEL_BUTTON,
-					TD_SHIELD_ICON,
-					&btn
-				);
-				if (btn != IDYES) return ERROR_CANCELLED;
-
-				SHELLEXECUTEINFOW sei{};
-				sei.cbSize = sizeof(sei);
-				sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-				sei.lpVerb = L"runas";
-				sei.nShow = SW_SHOW;
-				auto program = make_unique<WCHAR[]>(32768);
-				GetModuleFileNameW(NULL, program.get(), 32768);
-				sei.lpFile = program.get();
-				wstring params = L"--type=setup --action=" + action;
-				sei.lpParameters = params.c_str();
-				if (!ShellExecuteExW(&sei)) goto setup_askprivilege;
-				if (!sei.hProcess) return GetLastError();
-				WaitForSingleObject(sei.hProcess, INFINITE);
-				DWORD exitCode{};
-				GetExitCodeProcess(sei.hProcess, &exitCode);
-				CloseHandle(sei.hProcess);
-
-				return exitCode;
-			}
-		} // if (action.empty())
-		try {
-			ServiceManager scm;
-			if (action == L"install") {
-				try {
-					if (scm.get(name)) {
-						SetLastError(ERROR_SERVICE_EXISTS);
-						throw w32oop::exceptions::system_exception("Service already exists.");
-					}
-				}
-				catch (w32oop::exceptions::system_exception& exc) {
-					if (!dynamic_cast<invalid_scm_handle_exception*>(&exc)) throw;
-				}
-				w32ServiceHandle scm = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
-				auto program = make_unique<WCHAR[]>(32768);
-				GetModuleFileNameW(NULL, program.get(), 32768);
-				wstring cmdLine = L"\""s + program.get() + 
-					L"\" --type=service --name=\"" + name + L"\"";
-				Service myService = w32ServiceHandle(CreateServiceW(scm, name.c_str(),
-					(L"Process Control Server (" + name + L")").c_str(),
-					SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
-					cmdLine.c_str(), NULL, NULL, 
-					L"RpcSs\0DcomLaunch\0LSM\0CryptSvc\0SamSs\0ProfSvc\0UserManager\0EventSystem\0SENS\0",
-					NULL, NULL));
-				SERVICE_DESCRIPTIONW a{};
-				WCHAR desc[] = L"Process Control Server";
-				a.lpDescription = desc;
-				ChangeServiceConfig2W(myService, SERVICE_CONFIG_DESCRIPTION, &a);
-				if (!myService.start()) throw w32oop::exceptions::system_exception("Failed to start service.");
-
-				TaskDialog(NULL, NULL, L"MyProcControl (Lite) Setup",
-					L"The product has been successfully installed to your computer.",
-					L"Click OK to dismiss.", TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON, TD_INFORMATION_ICON, NULL);
-				return 0;
-			}
-			if (action == L"uninstall") {
-				Service myService = scm.get(name);
-				if (!myService.remove()) throw w32oop::exceptions::system_exception("Failed to remove service.");
-				if (myService.status() == SERVICE_RUNNING) {
-					if (!myService.pause_service()) throw w32oop::exceptions::system_exception("Failed to pause service.");
-					Sleep(500);
-				}
-				if (myService.status() == SERVICE_PAUSED) {
-					if (!myService.stop()) throw w32oop::exceptions::system_exception("Failed to stop service.");
-				}
-
-				TaskDialog(NULL, NULL, L"MyProcControl (Lite) Setup",
-					L"The product has been successfully removed from your computer.",
-					L"Click OK to dismiss.",
-					TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON, TD_INFORMATION_ICON, NULL);
-				return 0;
-			}
-			MessageBoxW(NULL, L"Unknown action type", L"Error", MB_ICONERROR);
-			return 87;
-		}
-		catch (w32oop::exceptions::system_exception& e) {
-			TaskDialog(NULL, nullptr, L"MyProcControl (Lite) Setup", 
-				L"The operation failed for an operation-specific reason",
-				(w32oop::util::str::converts::str_wstr(e.what()) + L"\n\n" +
-					ErrorChecker().message()).c_str(), TDCBF_CANCEL_BUTTON, TD_ERROR_ICON, 0);
-			return GetLastError();
-		}
+		return RunSetupUI(name, action);
 	}
 
 	return ERROR_INVALID_PARAMETER;

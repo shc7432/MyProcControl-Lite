@@ -114,6 +114,12 @@
     <ClCompile Include="..\lib\sha256\sha256.c">
       <Filter>vendor</Filter>
     </ClCompile>
+    <ClCompile Include="setupui.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="commandline.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MyProcControlUI.rc">
@@ -241,7 +247,7 @@
     <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="TrayIcon.hpp">
+    <ClInclude Include="TrayIconWin.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="processhelper.h">
@@ -264,6 +270,12 @@
     </ClInclude>
     <ClInclude Include="..\lib\sha256\sha256.h">
       <Filter>vendor</Filter>
+    </ClInclude>
+    <ClInclude Include="setupui.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="commandline.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

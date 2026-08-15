@@ -1,4 +1,5 @@
-﻿#include "TrayIcon.hpp"
+﻿#include "TrayIconWin.hpp"
+#include "processhelper.h"
 #include "resource.h"
 #include "../out/generated/midl/service_h.h"
 #include <shobjidl.h>
@@ -44,7 +45,8 @@ static int mystart(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint)
 	if (!bSuccess) return error;
 	return error;
 }
-static int reqcontrol(
+
+int MyProcControl_Lite::TrayIconWin_RequestAttachControl(
 	unsigned long pid,
 	unsigned long* errorp,
 	PCWSTR endpoint
@@ -70,13 +72,13 @@ static int reqcontrol(
 	RpcTryExcept{
 		rpcRet = MyProcControlLite_RequestAddControl(hBinding, pid, errorp);
 	}
-		RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
+	RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
 		RpcBindingFree(&hBinding);
 		return RPC_S_CALL_FAILED;
 	}
 	RpcEndExcept
 
-		RpcBindingFree(&hBinding);
+	RpcBindingFree(&hBinding);
 
 	return rpcRet;
 }
@@ -155,7 +157,8 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 			}, hwnd, user, L"MyProcControlLiteRpc_" + svc).detach();
 		}),
 		MenuItem(L"Attach control to process by &PID", 0x22, [this] {
-			std::thread([] (HWND hwnd, wstring endpoint) {
+			std::thread([] (HWND hwnd, wstring svc) {
+				EnableAllPrivileges(NULL);
 				unsigned long err = 0;
 				DWORD pid{};
 				InputDialog idd(L"请输入文本");
@@ -164,13 +167,23 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 				auto r = idd.getInput<DWORD>(L"输入目标进程的进程标识符。");
 				if (!r.has_value()) return;
 				pid = r.value();
-				if (!reqcontrol(pid, &err, endpoint.c_str())) {
+				if (!TrayIconWin_RequestAttachControl(pid, &err, (L"MyProcControlLiteRpc_" + svc).c_str())) {
 					if (!IsUserAnAdmin()) {
-						// TODO: try elevate and try again
+						// try elevate and try again
+						wstring cmd = format(L"--type=command-line-interface --action=attach "
+							L"--name=\"{}\" --extra1={} --extra2=y", svc, pid);
+						auto appPath = make_shared<WCHAR[]>(32768);
+						if (GetModuleFileNameW(NULL, appPath.get(), 32768)) {
+							if ((INT_PTR)ShellExecuteW(NULL, L"runas", appPath.get(), cmd.c_str(), NULL, SW_NORMAL) > 32) {
+								return;
+							}
+						}
 					}
-					MessageBoxW(hwnd, ErrorChecker(err).message().c_str(), NULL, MB_ICONERROR);
+					MessageBoxW(hwnd, ErrorChecker(err).message().c_str(), NULL, MB_ICONERROR | MB_TOPMOST);
+					return;
 				}
-			}, hwnd, L"MyProcControlLiteRpc_" + svc).detach();
+				MessageBoxTimeoutW(hwnd, L"Successfully attached to the process.", L"Success", MB_ICONINFORMATION, 0, 1000);
+			}, hwnd, svc).detach();
 		}),
 		// TODO: graphics process selector
 	});

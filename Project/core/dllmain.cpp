@@ -67,6 +67,10 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 #pragma region 加入 Hooks 代码
 		DetourAttach(&(PVOID&)TrueCreateProcessW, HookedCreateProcessW);
 		DetourAttach(&(PVOID&)TrueCreateProcessA, HookedCreateProcessA);
+		DetourAttach(&(PVOID&)TrueCreateProcessAsUserW, HookedCreateProcessAsUserW);
+		DetourAttach(&(PVOID&)TrueCreateProcessAsUserA, HookedCreateProcessAsUserA);
+		DetourAttach(&(PVOID&)TrueCreateProcessWithTokenW, HookedCreateProcessWithTokenW);
+		DetourAttach(&(PVOID&)TrueCreateProcessWithLogonW, HookedCreateProcessWithLogonW);
 
 		// 更多功能待实现...
 #pragma endregion
@@ -80,6 +84,10 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 #pragma region 移除 Hooks 代码
 		DetourDetach(&(PVOID&)TrueCreateProcessW, HookedCreateProcessW);
 		DetourDetach(&(PVOID&)TrueCreateProcessA, HookedCreateProcessA);
+		DetourDetach(&(PVOID&)TrueCreateProcessAsUserW, HookedCreateProcessAsUserW);
+		DetourDetach(&(PVOID&)TrueCreateProcessAsUserA, HookedCreateProcessAsUserA);
+		DetourDetach(&(PVOID&)TrueCreateProcessWithTokenW, HookedCreateProcessWithTokenW);
+		DetourDetach(&(PVOID&)TrueCreateProcessWithLogonW, HookedCreateProcessWithLogonW);
 
 #pragma endregion
 		DetourTransactionCommit();

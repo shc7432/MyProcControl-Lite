@@ -178,6 +178,7 @@
     <ClCompile Include="..\..\..\w32oop\System\Service.cpp" />
     <ClCompile Include="..\lib\sha256\sha256.c" />
     <ClCompile Include="..\out\generated\midl\service_c.c" />
+    <ClCompile Include="commandline.cpp" />
     <ClCompile Include="data_poller.cpp" />
     <ClCompile Include="injectusinghelper.cpp" />
     <ClCompile Include="main.cpp" />
@@ -185,6 +186,7 @@
     <ClCompile Include="push_data_runner.cpp" />
     <ClCompile Include="remote_caller.cpp" />
     <ClCompile Include="session_worker.cpp" />
+    <ClCompile Include="setupui.cpp" />
     <ClCompile Include="srvapi.cpp" />
     <ClCompile Include="service_s_wrapper.c" />
     <ClCompile Include="srv.cpp" />
@@ -231,6 +233,7 @@
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\operations.hpp" />
     <ClInclude Include="..\..\..\w32oop\w32use.hpp" />
     <ClInclude Include="..\lib\sha256\sha256.h" />
+    <ClInclude Include="commandline.h" />
     <ClInclude Include="data_poller.hpp" />
     <ClInclude Include="injectusinghelper.hpp" />
     <ClInclude Include="processhelper.h" />
@@ -238,10 +241,11 @@
     <ClInclude Include="remote_caller.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="session_worker.hpp" />
+    <ClInclude Include="setupui.h" />
     <ClInclude Include="srvapi.hpp" />
     <ClInclude Include="srv.hpp" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="TrayIcon.hpp" />
+    <ClInclude Include="TrayIconWin.hpp" />
     <ClInclude Include="ui_consent.hpp" />
   </ItemGroup>
   <ItemGroup>

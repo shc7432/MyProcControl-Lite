@@ -1,4 +1,4 @@
-// CLI11: Version 2.6.1
+﻿// CLI11: Version 2.6.1
 // Originally designed by Henry Schreiner
 // https://github.com/CLIUtils/CLI11
 //
