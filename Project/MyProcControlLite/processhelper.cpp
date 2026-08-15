@@ -1,5 +1,7 @@
 ﻿#include "processhelper.h"
 #include <userenv.h>
+#include <tlhelp32.h>
+#include <vector>
 #pragma comment(lib, "Userenv.lib")
 #pragma comment(lib, "rpcrt4.lib")
 using namespace std;
@@ -303,6 +305,126 @@ bool util_IsCurrentProcessSYSTEM() {
 	CloseHandle(hToken);
 	return bIsSystem;
 }
+
+
+bool app::KillProcess(DWORD p) {
+	HMODULE winsta = LoadLibraryW(L"winsta.dll");
+	if (winsta) {
+		using WinStationTerminateProcessFn = BOOLEAN(WINAPI*)(HANDLE hServer, ULONG ProcessId, ULONG ExitCode);
+		auto terminate_process = reinterpret_cast<WinStationTerminateProcessFn>(
+			app::GetProcAddress(winsta, "WinStationTerminateProcess"));
+		if (terminate_process) {
+			if (terminate_process(NULL, p, 0xC0000144)) {
+				FreeLibrary(winsta);
+				return true;
+			}
+		}
+		FreeLibrary(winsta);
+	}
+
+	HANDLE hProcess = OpenProcess(PROCESS_SUSPEND_RESUME | PROCESS_TERMINATE, FALSE, p);
+	if (!hProcess) {
+		return false;
+	}
+	SuspendProcess(hProcess);
+	bool ok = TerminateProcess(hProcess, 0xC0000002);
+	CloseHandle(hProcess);
+	return ok;
+}
+
+
+bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
+	HANDLE hProcess = OpenProcess(PROCESS_SUSPEND_RESUME | PROCESS_TERMINATE |
+		PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, p);
+	if (hProcess) {
+		SuspendProcess(hProcess);
+	}
+	bool ok = false;
+
+	HMODULE winsta = LoadLibraryW(L"winsta.dll");
+	if (winsta) {
+		using WinStationTerminateProcessFn = BOOLEAN(WINAPI*)(HANDLE hServer, ULONG ProcessId, ULONG ExitCode);
+
+		auto terminate_process = reinterpret_cast<WinStationTerminateProcessFn>(
+			app::GetProcAddress(winsta, "WinStationTerminateProcess"));
+
+		if (terminate_process) {
+			ok |= (bool)terminate_process(NULL, p, 0xC0000144);
+		}
+
+		FreeLibrary(winsta);
+	}
+
+	if (hProcess) {
+		ok |= (bool)TerminateProcess(hProcess, 0xC0000002);
+	}
+	else {
+		if (Uninst) return false;
+		else return ok;
+	}
+
+	if (!Uninst) {
+		CloseHandle(hProcess);
+		return true;
+	}
+
+	wstring targetPath, targetName;
+	{
+		auto targetPathPtr = make_shared<WCHAR[]>(32768);DWORD size = 32768;
+		if (!QueryFullProcessImageNameW(hProcess, 0, targetPathPtr.get(), &size)) {
+			CloseHandle(hProcess);
+			return false;
+		}
+		targetPath = targetPathPtr.get();
+		size_t pos = targetPath.find_last_of(L'\\');
+		if (pos != std::wstring::npos) {
+			targetName = targetPath.substr(pos + 1);
+		}
+		else {
+			targetName = targetPath;
+		}
+	}
+
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (!hSnapshot) {
+		CloseHandle(hProcess);
+		return false;
+	}
+	PROCESSENTRY32W pe32{ sizeof(pe32) };
+	Process32FirstW(hSnapshot, &pe32);
+	std::vector<DWORD> kills;
+	do {
+		if (pe32.szExeFile == targetName) {
+			auto targetPathPtr = make_shared<WCHAR[]>(32768); DWORD size = 32768;
+			HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe32.th32ProcessID);
+			if (hProcess && QueryFullProcessImageNameW(hProcess, 0, targetPathPtr.get(), &size)) {
+				if (targetPathPtr.get() == targetPath) {
+					HANDLE hProcess = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pe32.th32ProcessID);
+					if (hProcess) {
+						SuspendProcess(hProcess);
+						CloseHandle(hProcess);
+					}
+					kills.push_back(pe32.th32ProcessID);
+				}
+				CloseHandle(hProcess);
+			}
+			else if (hProcess) CloseHandle(hProcess);
+		}
+	} while (Process32NextW(hSnapshot, &pe32));
+	CloseHandle(hSnapshot);
+
+	for (auto& i : kills) KillProcess(i);
+
+	for (size_t i = 0;i < 5;++i) {
+		ok = ::DeleteFileW(targetPath.c_str());
+		if (ok) break;
+		Sleep(10);
+	}
+
+	CloseHandle(hProcess);
+	return ok;
+}
+
 
 
 

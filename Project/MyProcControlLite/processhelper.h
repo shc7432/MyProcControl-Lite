@@ -35,3 +35,8 @@ std::wstring GenerateUUIDW();
 
 bool util_IsCurrentProcessSYSTEM();
 
+namespace app {
+	bool KillProcess(DWORD p);
+	bool KillOrUninstallApplication(DWORD p, BOOL Uninst);
+}
+

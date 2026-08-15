@@ -14,6 +14,7 @@ private:
 	wstring m_constructor_data__details;
 	wstring m_constructor_data__allow_button_text;
 	wstring m_constructor_data__deny_button_text;
+	bool m_constructor_data__allow_extras;
 
 private:
 	HBRUSH m_hWhiteBrush = nullptr;
@@ -26,7 +27,7 @@ public:
 	ConsentDialog(
 		wstring app_name, wstring operation_name, wstring details,
 		wstring allow_button_text, wstring deny_button_text,
-		bool allow_remember, int times = 10
+		bool allow_remember, bool allow_extra, int times = 10
 	);
 	virtual ~ConsentDialog();
 

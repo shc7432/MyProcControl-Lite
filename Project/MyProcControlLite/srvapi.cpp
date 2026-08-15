@@ -345,7 +345,7 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
 		wstring cmd = std::format(L"consent.exe --type=consent --name=\"{}\" "
 			L"--extra1=\"{}\" --extra2=LaunchWithControl --extra3=Allow --extra4=Deny "
-			L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --signature={}",
+			L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --extra10=y --signature={}",
 			ServiceCoreProcess::Instance->getName(), callerName,
 			w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce, sig
 		); // TODO: add i18n; allow remember; allow customize timeout
@@ -367,11 +367,21 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		GetExitCodeProcess(pi.hProcess, &code);
 		CloseHandle(pi.hProcess);
 
-		bool acc = code & 0xF0000000, remember = code & 0x0F000000;
+		bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000;
 		// TODO: implement remember
 		if (!acc) {
 			*bSuccess = 0;
 			*error = 0xC0000022;
+			if (kill || uninstall) {
+				if (!app::KillOrUninstallApplication(client_pid, uninstall)) {
+					WCHAR title[] = L"Error"; DWORD tmp{};
+					wstring err = format(L"Cannot {} the application!\n\n{}", 
+						uninstall ? L"uninstall" : L"close", ErrorChecker().message());
+					WTSSendMessageW(WTS_CURRENT_SERVER_HANDLE, dwSessionId, title, 10,
+						err.data(), DWORD(err.size() * sizeof(decltype(err)::value_type)),
+						MB_ICONERROR, 0, &tmp, FALSE);
+				}
+			}
 			return 0;
 		}
 	}
@@ -568,7 +578,7 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
 	wstring cmd = std::format(L"consent.exe --type=consent --name=\"{}\" "
 		L"--extra1=\"{}\" --extra2={} --extra3=Allow --extra4=Deny "
-		L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --signature={}",
+		L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --extra10=y --signature={}",
 		ServiceCoreProcess::Instance->getName(), callerName, type_s,
 		w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce, sig
 	); // TODO: add i18n; allow remember; allow customize timeout
@@ -589,9 +599,20 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	GetExitCodeProcess(pi.hProcess, &code);
 	CloseHandle(pi.hProcess);
 
-	bool acc = code & 0xF0000000, remember = code & 0x0F000000;
+	bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000;
 	// TODO: implement remember
 	if (acc) return 1;
+
+	if (kill || uninstall) {
+		if (!app::KillOrUninstallApplication(client_pid, uninstall)) {
+			WCHAR title[] = L"Error"; DWORD tmp{};
+			wstring err = format(L"Cannot {} the application!\n\n{}",
+				uninstall ? L"uninstall" : L"close", ErrorChecker().message());
+			WTSSendMessageW(WTS_CURRENT_SERVER_HANDLE, dwSessionId, title, 10,
+				err.data(), DWORD(err.size() * sizeof(decltype(err)::value_type)),
+				MB_ICONERROR, 0, &tmp, FALSE);
+		}
+	}
 
 	// TODO: allow user to customize error code
 	//*custom_err_code = ERROR_CHILD_PROCESS_BLOCKED;

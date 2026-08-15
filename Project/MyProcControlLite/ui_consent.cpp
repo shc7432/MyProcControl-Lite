@@ -4,7 +4,7 @@ using namespace std;
 MyProcControl_Lite::ConsentDialog::ConsentDialog(
 	wstring app_name, wstring operation_name, wstring details,
 	wstring allow_button_text, wstring deny_button_text,
-	bool allow_remember, int times
+	bool allow_remember, bool allow_extra, int times
 ) : Window(L"Consent Dialog", 480, 320, 0, 0, WS_POPUP | WS_BORDER | WS_SYSMENU)
 {
 	m_constructor_data__app_name = app_name;
@@ -13,6 +13,7 @@ MyProcControl_Lite::ConsentDialog::ConsentDialog(
 	m_constructor_data__allow_button_text = allow_button_text;
 	m_constructor_data__deny_button_text = deny_button_text;
 	m_constructor_data__allow_remember = allow_remember;
+	m_constructor_data__allow_extras = allow_extra;
 
 	m_result = 0;
 	m_remember = false;
@@ -75,12 +76,13 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 	allow_button.set_parent(this);
 	allow_button.create(m_constructor_data__allow_button_text + (L" (Ctrl + Enter)"), 225, 40, 10, 235);
 	deny_button.set_parent(this);
-	deny_button.create(m_constructor_data__deny_button_text + (L" (Esc)"), 225, 40, 240, 235);
+	deny_button.create(m_constructor_data__deny_button_text + (L" (Esc)"), 225, 40, 240, 235, 
+		Button::STYLE | (m_constructor_data__allow_extras ? BS_SPLITBUTTON : 0));
 	allow_button.font(btnFont);
 	deny_button.font(btnFont);
 
 	allow_button.onClick([this](EventData&) {
-		m_result = 1;
+		m_result = 0xF0000000;
 		notExited = false;
 		this->close();
 	});
@@ -89,10 +91,25 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 		notExited = false;
 		this->close();
 	});
+	deny_button.on(BCN_DROPDOWN, [this](EventData& ev) {
+		if (!m_constructor_data__allow_extras) return;
+		ev.preventDefault();
+		RECT rc{}; GetWindowRect(deny_button, &rc);
+		int ret = Menu({
+			MenuItem(m_constructor_data__deny_button_text, 1),
+			MenuItem::separator(),
+			MenuItem(L"Close the application", 2),
+			MenuItem(L"Close and uninstall the application", 3),
+		}).pop(rc.left, rc.bottom);
+		if (!ret) return;
+		m_result = (ret == 3 ? 0x00200000 : (ret == 2 ? 0x00100000 : 0));
+		notExited = false;
+		this->close();
+	});
 
 	register_hot_key(true, false, false, VK_RETURN, [this](HotKeyProcData& ev) {
 		ev.preventDefault();
-		m_result = 1;
+		m_result = 0xF0000000;
 		notExited = false;
 		this->close();
 	}, HotKeyOptions::Windowed);

@@ -119,13 +119,13 @@ int WINAPI wWinMain(
 		catch (...) {}
 		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
 		ConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
-			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", ttl);
+			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
 		cdlg.create();
 		cdlg.show();
 		cdlg.run(&cdlg);
 
-		bool accepted = cdlg.result();
-		return (accepted ? 0xF0000000 : 0x0) | (cdlg.remember() ? 0x0F000000 : 0x0);
+		int result = cdlg.result();
+		return result | (cdlg.remember() ? 0x0F000000 : 0x0);
 	}
 
 	if (type == L"command-line-interface") {
