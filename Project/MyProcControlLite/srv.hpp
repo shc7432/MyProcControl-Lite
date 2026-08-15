@@ -112,7 +112,10 @@ protected:
 	HANDLE injector86_in{}, injector86_out{}, injector64_in{}, injector64_out{};
 	std::unique_ptr<app::RemoteCaller> injectHelperCaller64, injectHelperCaller86;
 
+	bool _ProtectionDisabled = false;
+
 public:
 	const std::wstring& getName() const { return name; }
+	bool IsProtectionDisabled() const { return _ProtectionDisabled; }
 };
 

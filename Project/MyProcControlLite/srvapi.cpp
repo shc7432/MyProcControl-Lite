@@ -37,6 +37,8 @@ int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long
 static std::wstring consent_secret;
 static std::map<DWORD, std::recursive_mutex> consentUI_onlyOneInst;
 static std::recursive_mutex consentUI_onlyOneInst_accessLock;
+static std::map<DWORD, time_t> consentUI_BlockUntil;
+static std::recursive_mutex consentUI_BlockUntil_accessLock;
 
 static inline auto AcquireSessionConsentUILock(DWORD sessionId) {
 	if (consentUI_onlyOneInst.contains(sessionId) == false) {
@@ -180,16 +182,21 @@ bool MyProcControl_Lite::RpcServer::Stop()
 
 void MyProcControlLite_Server_OnEnumUserSession(DWORD count, PWTS_SESSION_INFOW pWtsSessionInfo) {
 	// collect alive sessions
-	std::set<DWORD> alive_sessions, dead_sessions;
+	std::set<DWORD> alive_sessions;
 	for (DWORD dwI = 0; dwI < count; ++dwI) {
 		alive_sessions.insert((pWtsSessionInfo + dwI)->SessionId);
 	}
-	std::lock_guard gg(consentUI_onlyOneInst_accessLock);
-	for (auto& i : consentUI_onlyOneInst) {
-		if (!alive_sessions.contains(i.first)) dead_sessions.insert(i.first);
+	{
+		std::lock_guard gg(consentUI_onlyOneInst_accessLock);
+		std::erase_if(consentUI_onlyOneInst, [&](const auto& pair) {
+			return !alive_sessions.contains(pair.first);
+		});
 	}
-	for (auto& i : dead_sessions) {
-		consentUI_onlyOneInst.erase(i);
+	{
+		std::lock_guard gg(consentUI_BlockUntil_accessLock);
+		std::erase_if(consentUI_BlockUntil, [&](const auto& pair) {
+			return !alive_sessions.contains(pair.first);
+		});
 	}
 }
 
@@ -327,6 +334,16 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		// non-interactive session, make it interactive
 		dwSessionId = WTSGetActiveConsoleSessionId();
 	}
+	if (consentUI_BlockUntil.contains(dwSessionId)) do {
+		std::lock_guard gg(consentUI_BlockUntil_accessLock);
+		if (!consentUI_BlockUntil.contains(dwSessionId)) break;
+		if (time(0) < consentUI_BlockUntil.at(dwSessionId)) {
+			*bSuccess = 0;
+			*error = ERROR_ACCESS_DENIED;
+			return 0;
+		}
+		consentUI_BlockUntil.erase(dwSessionId);
+	} while (0);
 	if (!SetTokenInformation(hToken, TokenSessionId, (void*)&dwSessionId, sizeof(DWORD))) {
 		*bSuccess = 0;
 		*error = GetLastError();
@@ -334,7 +351,7 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	}
 
 	// consent first
-	{
+	if (!ServiceCoreProcess::Instance->IsProtectionDisabled()) {
 		wstring detailedDetails = std::format(
 			L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nCommand line:\n{}",
 			client_pid, callerName, callerPath, application, cmdline
@@ -367,8 +384,14 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		GetExitCodeProcess(pi.hProcess, &code);
 		CloseHandle(pi.hProcess);
 
-		bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000;
+		bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000,
+			blockUntil = code & 0x00400000;
 		// TODO: implement remember
+		if (blockUntil) {
+			time_t block_t = code & 0x000FFFFF;
+			std::lock_guard gg(consentUI_BlockUntil_accessLock);
+			consentUI_BlockUntil.emplace(dwSessionId, time(0) + block_t);
+		}
 		if (!acc) {
 			*bSuccess = 0;
 			*error = 0xC0000022;
@@ -493,6 +516,10 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		return 0;
 	}
 
+	if (ServiceCoreProcess::Instance->IsProtectionDisabled()) {
+		return 1;
+	}
+
 	wstring type_s;
 	static const std::map<int, wstring> type_s_map{
 		{0, L"CreateProcess"},
@@ -549,6 +576,15 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		// non-interactive session, make it interactive
 		dwSessionId = WTSGetActiveConsoleSessionId();
 	}
+	if (consentUI_BlockUntil.contains(dwSessionId)) do {
+		std::lock_guard gg(consentUI_BlockUntil_accessLock);
+		if (!consentUI_BlockUntil.contains(dwSessionId)) break;
+		if (time(0) < consentUI_BlockUntil.at(dwSessionId)) {
+			*custom_err_code = ERROR_ACCESS_DENIED;
+			return 0;
+		}
+		consentUI_BlockUntil.erase(dwSessionId);
+	} while (0);
 
 	// spawn a consent dialog
 	wstring detailedDetails;
@@ -599,10 +635,16 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	GetExitCodeProcess(pi.hProcess, &code);
 	CloseHandle(pi.hProcess);
 
-	bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000;
+	bool acc = code & 0xF0000000, remember = code & 0x0F000000, kill = code & 0x00100000, uninstall = code & 0x00200000,
+		blockUntil = code & 0x00400000;
 	// TODO: implement remember
 	if (acc) return 1;
 
+	if (blockUntil) {
+		time_t block_t = code & 0x000FFFFF;
+		std::lock_guard gg(consentUI_BlockUntil_accessLock);
+		consentUI_BlockUntil.emplace(dwSessionId, time(0) + block_t);
+	}
 	if (kill || uninstall) {
 		if (!app::KillOrUninstallApplication(client_pid, uninstall)) {
 			WCHAR title[] = L"Error"; DWORD tmp{};

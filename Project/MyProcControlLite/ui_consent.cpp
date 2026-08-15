@@ -100,11 +100,40 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 		int ret = Menu({
 			MenuItem(m_constructor_data__deny_button_text, 1),
 			MenuItem::separator(),
+			MenuItem(L"Block all further requests within...", {
+				MenuItem(L"5 seconds", 5),
+				MenuItem(L"10 seconds", 10),
+				MenuItem(L"30 seconds", 30),
+				MenuItem(L"1 minute", 60),
+				MenuItem(L"2 minutes", 120),
+				MenuItem(L"5 minutes", 300),
+				MenuItem(L"10 minutes", 600),
+				MenuItem(L"15 minutes", 900),
+				MenuItem(L"20 minutes", 1200),
+				MenuItem(L"30 minutes", 1800),
+				MenuItem(L"45 minutes", 60 * 45),
+				MenuItem(L"1 hour", 3600),
+				MenuItem(L"2 hour", 7200),
+				MenuItem(L"5 hour", 3600 * 5),
+				MenuItem(L"6 hour", 3600 * 6),
+				MenuItem(L"12 hour", 3600 * 12),
+				MenuItem(L"1 day", 86400),
+			}),
+			MenuItem::separator(),
 			MenuItem(L"Close the application", 2),
 			MenuItem(L"Close and uninstall the application", 3),
 		}).pop(rc.left, rc.bottom);
 		if (!ret) return;
-		m_result = (ret == 3 ? 0x00200000 : (ret == 2 ? 0x00100000 : 0));
+		switch (ret) {
+		case 2:
+			m_result = 0x00100000;
+			break;
+		case 3:
+			m_result = 0x00200000;
+			break;
+		default:
+			m_result = 0x00400000 + ret;
+		}
 		notExited = false;
 		this->close();
 	});
