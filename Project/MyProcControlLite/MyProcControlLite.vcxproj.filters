@@ -22,6 +22,9 @@
     <Filter Include="Generated">
       <UniqueIdentifier>{326093b3-e571-4e45-92be-f4d343a4cd9f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="vendor">
+      <UniqueIdentifier>{66380fa7-0a12-4c4a-bcf5-035bff662d9d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -107,6 +110,9 @@
     </ClCompile>
     <ClCompile Include="service_s_wrapper.c">
       <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\sha256\sha256.c">
+      <Filter>vendor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -255,6 +261,9 @@
     </ClInclude>
     <ClInclude Include="injectusinghelper.hpp">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\sha256\sha256.h">
+      <Filter>vendor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -21,4 +21,6 @@ private:
 	std::wstring m_endpoint;
 };
 
+bool ConsentVerifySignature(std::wstring payload, std::wstring sig, std::wstring endpoint);
+
 } // namespace MyProcControl_Lite

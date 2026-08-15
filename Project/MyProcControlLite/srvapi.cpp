@@ -2,14 +2,19 @@
 #include "../out/generated/midl/service_h.h"
 #include "processhelper.h"
 #include "injectusinghelper.hpp"
+#include "../lib/sha256/sha256.h"
 #include <w32use.hpp>
 #include <stdlib.h>
 #include <userenv.h>
+#include <WtsApi32.h>
 #include <memory>
 #pragma comment(lib, "RpcRT4.lib")
 
 using namespace std;
 
+void MyProcControlLite_Server_OnEnumUserSession(DWORD count, PWTS_SESSION_INFOW pWtsSessionInfo);
+
+int MyProcControlLite_ConsentUI_CheckAuthorization_Impl2(handle_t IDL_handle, const wchar_t* payload, const wchar_t* sig);
 int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR application, PCWSTR cmdline, int* bSuccess, unsigned long* error);
 int MyProcControlLite_Consent_CreateProcess_Impl2(
 	/* [in] */ handle_t IDL_handle,
@@ -23,7 +28,17 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 );
 int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long dwProcessId, unsigned long* error);
 
-static std::recursive_mutex consentUI_onlyOneInst;
+static std::wstring consent_secret;
+static std::map<DWORD, std::recursive_mutex> consentUI_onlyOneInst;
+static std::recursive_mutex consentUI_onlyOneInst_accessLock;
+
+static inline auto AcquireSessionConsentUILock(DWORD sessionId) {
+	if (consentUI_onlyOneInst.contains(sessionId) == false) {
+		std::lock_guard gg(consentUI_onlyOneInst_accessLock);
+		consentUI_onlyOneInst.emplace(std::piecewise_construct, std::forward_as_tuple(sessionId), std::forward_as_tuple());
+	}
+	return std::unique_lock(consentUI_onlyOneInst.at(sessionId));
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // MIDL user callbacks — required by service_c.c and service_s_wrapper.c
@@ -46,6 +61,10 @@ void* __RPC_USER MIDL_user_allocate(_In_ size_t size)
 //////////////////////////////////////////////////////////////////////////////
 // RPC Server: IServiceRpc — implementation
 //
+
+int MyProcControlLite_ConsentUI_CheckAuthorization_Impl(handle_t IDL_handle, const wchar_t* payload, const wchar_t* sig) {
+	return MyProcControlLite_ConsentUI_CheckAuthorization_Impl2(IDL_handle, payload, sig);
+}
 
 int MyProcControlLite_LaunchWithControl_Impl(
 		/* [in] */ handle_t IDL_handle,
@@ -99,6 +118,7 @@ bool MyProcControl_Lite::RpcServer::Start(const std::wstring& serviceName)
 	if (m_running.load()) return true;
 
 	m_endpoint = L"MyProcControlLiteRpc_" + serviceName;
+	consent_secret = GenerateUUIDW();
 
 	RPC_STATUS status = RpcServerUseProtseqEpW(
 		(RPC_WSTR)L"ncalrpc",
@@ -127,7 +147,9 @@ bool MyProcControl_Lite::RpcServer::Stop()
 {
 	if (!m_running.load()) return true;
 
-	//RpcMgmtStopServerListening(nullptr);// FIXME: 
+	consent_secret = L"";
+
+	(void)RpcMgmtStopServerListening(nullptr);
 	RPC_STATUS status = RpcServerUnregisterIfEx(
 		IServiceRpc_v1_0_s_ifspec,
 		NULL,
@@ -137,6 +159,86 @@ bool MyProcControl_Lite::RpcServer::Stop()
 }
 
 // ---------------------
+
+void MyProcControlLite_Server_OnEnumUserSession(DWORD count, PWTS_SESSION_INFOW pWtsSessionInfo) {
+	// collect alive sessions
+	std::set<DWORD> alive_sessions, dead_sessions;
+	for (DWORD dwI = 0; dwI < count; ++dwI) {
+		alive_sessions.insert((pWtsSessionInfo + dwI)->SessionId);
+	}
+	std::lock_guard gg(consentUI_onlyOneInst_accessLock);
+	for (auto& i : consentUI_onlyOneInst) {
+		if (!alive_sessions.contains(i.first)) dead_sessions.insert(i.first);
+	}
+	for (auto& i : dead_sessions) {
+		consentUI_onlyOneInst.erase(i);
+	}
+}
+
+static wstring calculate_consent_sig(const wstring& payload, time_t r = 0) {
+	if (!r) r = time(0) / 10;
+	wstring full_payload = to_wstring(payload.size()) + L"|" + payload + L"|" + consent_secret + L"|" + to_wstring(r);
+	char buffer[256]{};
+	sha256_easy_hash_hex(full_payload.data(), full_payload.size() * sizeof(typename decltype(full_payload)::value_type), buffer);
+
+	return w32oop::util::str::encodings::utf8_utf16(buffer);
+}
+
+static set<wstring> calculate_possible_consent_sig(const wstring& payload) {
+	time_t t = time(0) / 10;
+	return set<wstring>{
+		calculate_consent_sig(payload, t - 1),
+		calculate_consent_sig(payload, t),
+		calculate_consent_sig(payload, t + 1),
+	};
+}
+
+int MyProcControlLite_ConsentUI_CheckAuthorization_Impl2(handle_t IDL_handle, const wchar_t* payload, const wchar_t* sig) {
+	if (!payload || !sig) return 0;
+	return !!(calculate_possible_consent_sig(payload).contains(sig));
+}
+
+bool MyProcControl_Lite::ConsentVerifySignature(std::wstring payload, std::wstring sig, std::wstring endpoint) {
+	return [] (PCWSTR p, PCWSTR s, PCWSTR e) -> bool {
+		RPC_WSTR bindingStr = nullptr;
+		RPC_STATUS status = RpcStringBindingComposeW(
+			nullptr,
+			(RPC_WSTR)L"ncalrpc",
+			nullptr,
+			(RPC_WSTR)e,
+			nullptr,
+			&bindingStr);
+		if (status != RPC_S_OK) {
+			SetLastError((DWORD)status);
+			return false;
+		}
+
+		RPC_BINDING_HANDLE hBinding = nullptr;
+		status = RpcBindingFromStringBindingW(bindingStr, &hBinding);
+		RpcStringFreeW(&bindingStr);
+		if (status != RPC_S_OK) {
+			SetLastError((DWORD)status);
+			return false;
+		}
+
+		int bSuccess = 0;
+		unsigned long error = 0;
+		int rpcRet = 0;
+		RpcTryExcept{
+			rpcRet = MyProcControlLite_ConsentUI_CheckAuthorization(hBinding, p, s);
+		}
+		RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
+			RpcBindingFree(&hBinding);
+			SetLastError((DWORD)RPC_S_CALL_FAILED);
+			return false;
+		}
+		RpcEndExcept
+
+		RpcBindingFree(&hBinding);
+
+		return rpcRet;
+	} (payload.c_str(), sig.c_str(), endpoint.c_str());
+}
 
 int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR application, PCWSTR cmdline, int* bSuccess, unsigned long* error) {
 	if (!application || !cmdline || !bSuccess || !error) {
@@ -217,13 +319,16 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		);
 		wstring randomNonce = GenerateUUIDW();
 		w32oop::util::str::operations::replace(detailedDetails, L"\n", randomNonce);
+		wstring sig = calculate_consent_sig(detailedDetails);
 		w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
-		wstring cmd = std::format(L"consent.exe --type=consent --extra1=\"{}\" --extra2=LaunchWithControl --extra3=Allow --extra4=Deny "
-			L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={}", callerName,
-			w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce
+		wstring cmd = std::format(L"consent.exe --type=consent --name=\"{}\" "
+			L"--extra1=\"{}\" --extra2=LaunchWithControl --extra3=Allow --extra4=Deny "
+			L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --signature={}",
+			ServiceCoreProcess::Instance->getName(), callerName,
+			w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce, sig
 		); // TODO: add i18n; allow remember; allow customize timeout
 		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-		std::lock_guard _gg(consentUI_onlyOneInst);
+		auto _gg = AcquireSessionConsentUILock(dwSessionId);
 		if (!CreateProcessInSession(dwSessionId, appPath.get(), cmd.data(),
 			NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
 			*bSuccess = 0;
@@ -399,13 +504,16 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	);
 	wstring randomNonce = GenerateUUIDW();
 	w32oop::util::str::operations::replace(detailedDetails, L"\n", randomNonce);
+	wstring sig = calculate_consent_sig(detailedDetails);
 	w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
-	wstring cmd = std::format(L"consent.exe --type=consent --extra1=\"{}\" --extra2=CreateProcess --extra3=Allow --extra4=Deny "
-		L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={}", callerName,
-		w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce
+	wstring cmd = std::format(L"consent.exe --type=consent --name=\"{}\" "
+		L"--extra1=\"{}\" --extra2=CreateProcess --extra3=Allow --extra4=Deny "
+		L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --signature={}",
+		ServiceCoreProcess::Instance->getName(), callerName,
+		w32oop::util::str::operations::replace(detailedDetails, L"\"", L"\\\""), randomNonce, sig
 	); // TODO: add i18n; allow remember; allow customize timeout
 	STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
-	std::lock_guard _gg(consentUI_onlyOneInst);
+	auto _gg = AcquireSessionConsentUILock(dwSessionId);
 	if (!CreateProcessInSession(dwSessionId, appPath.get(), cmd.data(),
 		NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
 		*custom_err_code = GetLastError();

@@ -33,3 +33,5 @@ namespace app {
 
 std::wstring GenerateUUIDW();
 
+bool util_IsCurrentProcessSYSTEM();
+

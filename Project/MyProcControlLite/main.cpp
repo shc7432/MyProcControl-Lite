@@ -4,6 +4,8 @@
 #include "../lib/CLI11/CLI11.hpp"
 #include <w32use.hpp>
 #include "srv.hpp"
+#include "srvapi.hpp"
+#include "processhelper.h"
 #include "session_worker.hpp"
 #include "ui_consent.hpp"
 #include "TrayIcon.hpp"
@@ -46,16 +48,18 @@ int WINAPI wWinMain(
 	if (FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED))) __fastfail(FAST_FAIL_FATAL_APP_EXIT);
 	w32oop::util::RAIIHelper comUninit([] { CoUninitialize(); });
 	CLI::App app;
-	string u8type, u8name, u8action, u8ppid;
+	string u8type, u8name, u8action, u8ppid, u8sig;
 	array<string, 16> u8extras;
 	app.add_option("--type", u8type);
 	app.add_option("--name", u8name);
 	app.add_option("--action", u8action);
 	app.add_option("--ppid", u8ppid);
+	app.add_option("--signature", u8sig);
 	for (int i = 0; i < 16; ++i) app.add_option("--extra" + to_string(i + 1), u8extras[i]);
 	try { app.parse(utf16_utf8(GetCommandLineW()), true); } catch (...) {}
 	auto argc = app.count_all();
 	wstring type = utf8_utf16(u8type), name = utf8_utf16(u8name), action = utf8_utf16(u8action), ppid = utf8_utf16(u8ppid);
+	wstring signature = utf8_utf16(u8sig);
 	DWORD Ppid{};
 	try { Ppid = std::stoul(ppid); }
 	catch (...) { Ppid = (DWORD)-1; }
@@ -95,24 +99,14 @@ int WINAPI wWinMain(
 		return win.run();
 	}
 
-	if (type == L"consent-test") {
-		Window::set_global_option(Window::Option_DebugMode, true);
-		ConsentDialog cdlg(L"MyApp-VeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVerylongname.exe", L"CreateProcess",
-			L"Process Name: cmd.exe\r\nProcess : C:\\Windows\\System32\\cmd.exe\r\n"
-			L"Process Name: cmd.exe\r\nProcess : C:\\Windows\\System32\\cmd.exe\r\n"
-			L"User: Current User\r\nAdditional info:\r\nNone",
-			L"Allow", L"Block", true);
-		cdlg.create();
-		cdlg.show();
-		cdlg.run(&cdlg);
-		MessageBoxTimeoutW(NULL, (cdlg.result() == 1) ? L"Allowed" : L"Blocked", L"Consent Test",
-			(cdlg.remember() ? MB_ICONWARNING : MB_ICONINFORMATION) | MB_OK | MB_TOPMOST, 0, 2000);
-		return 0;
-	}
-
 	if (type == L"consent") {
 		if (u8extras[6] != "1883") return ERROR_WRONG_PASSWORD;
 		if (u8extras[8].empty()) return ERROR_INVALID_PARAMETER;
+		if (!util_IsCurrentProcessSYSTEM()) return ERROR_SIGNAL_REFUSED;
+		wstring text = utf8_utf16(u8extras[7]);
+		wstring text_raw = text, nonce = utf8_utf16(u8extras[8]);
+		if (!MyProcControl_Lite::ConsentVerifySignature(text_raw, signature, L"MyProcControlLiteRpc_" + name))
+			return ERROR_ACCESS_DENIED;
 		auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
 		if (hDesk) {
 			SetThreadDesktop(hDesk);
@@ -121,8 +115,6 @@ int WINAPI wWinMain(
 		int ttl = 10;
 		try { ttl = stoi(u8extras[5]); }
 		catch (...) {}
-		wstring text = utf8_utf16(u8extras[7]);
-		wstring nonce = utf8_utf16(u8extras[8]);
 		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
 		ConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
 			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", ttl);

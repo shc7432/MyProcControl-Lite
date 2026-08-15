@@ -89,11 +89,12 @@ public:
 	static int ServiceWorkerProcess(std::wstring name, DWORD ppid, std::string extra_hStop);
 
 public:
-	friend MyProcControl_Lite::MyWindowsServiceInjectHelper;
+	friend class MyProcControl_Lite::MyWindowsServiceInjectHelper;
 
-protected:
+public:
 	static ServiceCoreProcess* Instance;
 
+protected:
 	void PrepareEnvironment();
 	int RealEntry();
 
@@ -111,5 +112,7 @@ protected:
 	HANDLE injector86_in{}, injector86_out{}, injector64_in{}, injector64_out{};
 	std::unique_ptr<app::RemoteCaller> injectHelperCaller64, injectHelperCaller86;
 
+public:
+	const std::wstring& getName() const { return name; }
 };
 

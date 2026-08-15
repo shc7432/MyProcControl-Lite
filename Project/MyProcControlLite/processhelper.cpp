@@ -276,3 +276,33 @@ std::wstring GenerateUUIDW()
 }
 
 
+bool util_IsCurrentProcessSYSTEM() {
+	HANDLE hToken = nullptr;
+	// 打开自身进程令牌，需要TOKEN_QUERY权限
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+		__fastfail(2);
+	}
+	DWORD cbNeeded = 0;
+	// 第一次调用获取需要的缓冲区大小
+	GetTokenInformation(hToken, TokenUser, nullptr, 0, &cbNeeded);
+	auto spBuf = make_unique<BYTE[]>(cbNeeded);
+	PTOKEN_USER pTokenUser = reinterpret_cast<PTOKEN_USER>(spBuf.get());
+	if (!GetTokenInformation(hToken, TokenUser, pTokenUser, cbNeeded, &cbNeeded)) {
+		CloseHandle(hToken);
+		__fastfail(2);
+	}
+	PSID pSystemSid = nullptr;
+	SID_IDENTIFIER_AUTHORITY ntAuth = SECURITY_NT_AUTHORITY;
+	// S‑1‑5‑18：子授权只有1个，值18
+	if (!AllocateAndInitializeSid(&ntAuth, 1, SECURITY_LOCAL_SYSTEM_RID, 0, 0, 0, 0, 0, 0, 0, &pSystemSid)) {
+		CloseHandle(hToken);
+		__fastfail(2);
+	}
+	bool bIsSystem = ::EqualSid(pTokenUser->User.Sid, pSystemSid);
+	FreeSid(pSystemSid);
+	CloseHandle(hToken);
+	return bIsSystem;
+}
+
+
+

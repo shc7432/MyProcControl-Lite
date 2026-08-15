@@ -11,6 +11,8 @@ using namespace std;
 WindowsService* gInstance = nullptr;
 ServiceCoreProcess* ServiceCoreProcess::Instance;
 
+void MyProcControlLite_Server_OnEnumUserSession(DWORD count, PWTS_SESSION_INFOW pWtsSessionInfo);
+
 WindowsService::WindowsService(const std::wstring& serviceName)
 	: m_serviceName(serviceName),
 	m_statusHandle(nullptr),
@@ -586,7 +588,6 @@ int ServiceCoreProcess::RealEntry() {
 	if (!m_rpcServer.Start(name)) WindowsService::__crash();
 
 	while (1) {
-
 		// X86 ([0]) or X64 ([1]) inject helper
 		for (size_t index = 0, size = InjectHelperProcess.size(); index < size; ++index) {
 			auto& i = InjectHelperProcess.at(index);
@@ -644,6 +645,9 @@ int ServiceCoreProcess::RealEntry() {
 				break;
 			}
 
+			// invoke callback
+			MyProcControlLite_Server_OnEnumUserSession(c, pWtsSessionInfo);
+
 			//DWORD activeUser = WTSGetActiveConsoleSessionId();
 			//if (!sessionProcesses.contains(activeUser) && activeUser != 0 && activeUser != 0xFFFFFFFF) 
 			for (DWORD dwI = 0; dwI < c; ++dwI) {
@@ -670,10 +674,17 @@ int ServiceCoreProcess::RealEntry() {
 
 			WTSFreeMemory(pWtsSessionInfo);
 		} while (0);
-		for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
+		if (MAXIMUM_WAIT_OBJECTS - 1 - waitObjects.size() >= sessionProcesses.size())
+			for (auto& i : sessionProcesses) if (i.second) waitObjects.push_back(i.second);
 
 		// wait
 		waitObjects.insert(waitObjects.begin(), hStop);
+		if (waitObjects.size() > MAXIMUM_WAIT_OBJECTS) {
+			// too many objects to wait
+			SleepEx(WORKER_SLEEPTIME, TRUE);
+			waitObjects.clear();
+			continue;
+		}
 		auto r = WaitForMultipleObjects((DWORD)waitObjects.size(), waitObjects.data(), FALSE, WORKER_SLEEPTIME);
 		waitObjects.clear();
 		if (r == WAIT_OBJECT_0) {
