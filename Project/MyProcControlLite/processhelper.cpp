@@ -372,7 +372,7 @@ bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
 
 	wstring targetPath, targetName;
 	{
-		auto targetPathPtr = make_shared<WCHAR[]>(32768);DWORD size = 32768;
+		auto targetPathPtr = make_shared<WCHAR[]>(32768); DWORD size = 32768;
 		if (!QueryFullProcessImageNameW(hProcess, 0, targetPathPtr.get(), &size)) {
 			CloseHandle(hProcess);
 			return false;
@@ -384,6 +384,12 @@ bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
 		}
 		else {
 			targetName = targetPath;
+		}
+		RtlZeroMemory(targetPathPtr.get(), 32768 * sizeof(WCHAR));
+		GetModuleFileNameW(NULL, targetPathPtr.get(), 32768);
+		if (targetPath == targetPathPtr.get()) {
+			SetLastError(0xC0000035);
+			return false;
 		}
 	}
 

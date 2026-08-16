@@ -3,6 +3,7 @@
 #include <atomic>
 #include <string>
 #include <set>
+#include <map>
 #include <mutex>
 
 namespace MyProcControl_Lite {
@@ -32,6 +33,19 @@ namespace ServiceCore {
 }
 
 extern std::recursive_mutex consentUI_HighPermOpGlobalLock;
+
+namespace ServiceCore {
+	extern std::map<DWORD, time_t> consentUI_BlockUntil;
+	extern std::recursive_mutex consentUI_BlockUntil_accessLock;
+	auto AcquireSessionConsentUILock(DWORD sessionId) -> std::unique_lock<std::recursive_mutex>;
+
+	bool _XxxxInternalPopSecondaryConsentDialog(
+		DWORD client_pid, DWORD dwSessionId,
+		std::wstring app, std::wstring req, std::wstring detailsText,
+		std::wstring allowBtn, std::wstring denyBtn, bool* remember,
+		int timeout, bool showSplitMenu
+	);
+}
 
 
 namespace RpcClient {

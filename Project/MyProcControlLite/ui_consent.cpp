@@ -1,6 +1,7 @@
 ﻿#include "ui_consent.hpp"
 #include "processhelper.h"
 #include "srvapi.hpp"
+#include "../lib/ui/BackgroundLayeredAlphaWindowClass.h"
 using namespace std;
 using namespace w32oop::util::str::encodings;
 
@@ -310,70 +311,111 @@ static int _RunConsentUI_Secondary(
 	if (!MyProcControl_Lite::ConsentVerifySignature(text_raw, signature, L"MyProcControlLiteRpc_" + name))
 		return ERROR_ACCESS_DENIED;
 	EnableAllPrivileges(NULL);
-	auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
-	if (hDesk) {
-		SetThreadDesktop(hDesk);
-		CloseDesktop(hDesk);
-	}
-	int ttl = 10;
-	try { ttl = stoi(u8extras[5]); }
-	catch (...) {}
-	w32oop::util::str::operations::replace(text, nonce, L"\r\n");
-	MyProcControl_Lite::SecondaryConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
-		utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
-	cdlg.create();
-	HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
-		HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
-		if (!hProcess) return GetLastError();
-		if (WAIT_OBJECT_0 != WaitForSingleObject(hProcess, INFINITE)) return GetLastError();
-		CloseHandle(hProcess);
-		ExitProcess(0);
-		return 0;
-	}, (PVOID)(ULONG_PTR)app::GetCurrentProcessPPID(), 0, 0);
-	if (hWaiter) CloseHandle(hWaiter);
-	cdlg.show();
-	cdlg.run(&cdlg);
+	std::thread([&] {
+		auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+		if (hDesk) {
+			SetThreadDesktop(hDesk);
+			CloseDesktop(hDesk);
+		}
+		int ttl = 10;
+		try { ttl = stoi(u8extras[5]); }
+		catch (...) {}
+		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
+		MyProcControl_Lite::SecondaryConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
+			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
+		cdlg.create();
+		HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
+			HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
+			if (!hProcess) return GetLastError();
+			if (WAIT_OBJECT_0 != WaitForSingleObject(hProcess, INFINITE)) return GetLastError();
+			CloseHandle(hProcess);
+			ExitProcess(0);
+			return 0;
+		}, (PVOID)(ULONG_PTR)app::GetCurrentProcessPPID(), 0, 0);
+		if (hWaiter) CloseHandle(hWaiter);
+		cdlg.show();
+		cdlg.run(&cdlg);
 
-	int result = cdlg.result();
-	return result | (cdlg.remember() ? 0x20000000 : 0);
+		int result = cdlg.result();
+		ExitProcess(result | (cdlg.remember() ? 0x20000000 : 0));
+	}).join();
+	return 1;
 }
 
 static int _RunConsentUI_ScControl(
 	std::wstring name, std::wstring signature, const std::array<std::string, 16>& u8extras
 ) {
-	if (u8extras[6] != "1883") return ERROR_WRONG_PASSWORD;
-	if (u8extras[8].empty()) return ERROR_INVALID_PARAMETER;
-	wstring text = utf8_utf16(u8extras[7]);
-	wstring text_raw = text, nonce = utf8_utf16(u8extras[8]);
-	if (!MyProcControl_Lite::ConsentVerifySignature(text_raw, signature, L"MyProcControlLiteRpc_" + name))
+	if (u8extras[0] != "v1") return ERROR_VERSION_PARSE_ERROR;
+	wstring optype = utf8_utf16(u8extras[1]);
+	wstring SigVerif = optype;
+	if (!MyProcControl_Lite::ConsentVerifySignature(SigVerif, signature, L"MyProcControlLiteRpc_" + name))
 		return ERROR_ACCESS_DENIED;
-	EnableAllPrivileges(NULL);
-	auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
-	if (hDesk) {
-		SetThreadDesktop(hDesk);
-		CloseDesktop(hDesk);
-	}
-	int ttl = 10;
-	try { ttl = stoi(u8extras[5]); }
-	catch (...) {}
-	w32oop::util::str::operations::replace(text, nonce, L"\r\n");
-	MyProcControl_Lite::SecondaryConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
-		utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
-	cdlg.create();
-	HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
-		HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
-		if (!hProcess) return GetLastError();
-		if (WAIT_OBJECT_0 != WaitForSingleObject(hProcess, INFINITE)) return GetLastError();
-		CloseHandle(hProcess);
-		ExitProcess(0);
-		return 0;
-	}, (PVOID)(ULONG_PTR)app::GetCurrentProcessPPID(), 0, 0);
-	if (hWaiter) CloseHandle(hWaiter);
-	cdlg.show();
-	cdlg.run(&cdlg);
 
-	int result = cdlg.result();
-	return result | (cdlg.remember() ? 0x20000000 : 0);
+	static const set<wstring> allowedOpTypes{ L"pausectl", L"resumectl" };
+	if (!allowedOpTypes.contains(optype)) return ERROR_UNKNOWN_COMPONENT;
+
+	EnableAllPrivileges(NULL);
+	std::thread([&] {
+		auto hInput = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+		auto hDesk = OpenDesktopW(L"Winlogon", 0, FALSE, GENERIC_ALL);
+		if (hDesk) {
+			if (SetThreadDesktop(hDesk)) SwitchDesktop(hDesk);
+			CloseDesktop(hDesk);
+		}
+
+		std::thread([hInput] {
+			Sleep(30000);
+			SwitchDesktop(hInput);
+			ExitProcess(1);
+		}).detach();
+
+		int user = 0;
+
+		INITCOMMONCONTROLSEX icex{};
+		icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+		icex.dwICC = ICC_ALL_CLASSES;
+		InitCommonControlsEx(&icex);
+
+		TASKDIALOGCONFIG cfg{};
+		cfg.cbSize = sizeof(TASKDIALOGCONFIG);
+
+		wstring title;
+
+		const TASKDIALOG_BUTTON btnsPorR[] = {
+			{0x100000, L"Allow (&Y)"},
+			{0x1, L"Block (&N)"},
+		};
+		if (optype == L"pausectl" || optype == L"resumectl") {
+			title = L"Change Control State - " + name;
+			cfg.pszMainInstruction = optype == L"pausectl" ?
+				L"Do you really want to pause the control?" :
+				L"Do you want to resume the control?";
+			cfg.pszContent = optype == L"pausectl" ?
+				L"A program on your device has requested to pause the control. If continue, "
+				L"the control will be paused and all requests will be automatically accepted."
+				L"\nDo you really want to continue?\nThis request will be blocked after 30 seconds." :
+				L"Click Allow to resume the control.\nThis request will be blocked after 30 seconds.";
+			cfg.pszMainIcon = optype == L"pausectl" ? TD_WARNING_ICON : TD_INFORMATION_ICON;
+			cfg.cButtons = 2;
+			cfg.pButtons = btnsPorR;
+			cfg.nDefaultButton = 1;
+		}
+
+		RegClass_BackgroundLayeredAlphaWindowClass();
+		HWND hbg = CreateWindowExW(0, BackgroundLayeredAlphaWindowClassNameW, L"", WS_OVERLAPPED, 0, 0, 1, 1, 0, 0, 0, 0);
+		ShowWindow(hbg, SW_SHOW);
+		SetWindowPos(hbg, HWND_TOPMOST, 0, 0, 1, 1, 0);
+		cfg.hwndParent = hbg;
+		cfg.pszWindowTitle = title.c_str();
+		HRESULT hr = TaskDialogIndirect(&cfg, &user, nullptr, nullptr);
+		if (!SUCCEEDED(hr)) user = 1;
+		if (hbg) DestroyWindow(hbg);
+
+		SwitchDesktop(hInput);
+		CloseDesktop(hInput);
+		ExitProcess(user);
+	}).join();
+	return 1;
 }
 
 int MyProcControl_Lite::RunConsentUI(

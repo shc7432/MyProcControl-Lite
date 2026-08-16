@@ -121,6 +121,8 @@ public:
 	const std::wstring& getName() const { return name; }
 	HANDLE getStopEvent() const { return hStop; }
 	bool IsProtectionDisabled() const { return _ProtectionDisabled; }
-	bool RequestChangeProtection(bool fEnable, unsigned long* error);
+	bool RequestChangeProtection(
+		DWORD client, DWORD session, std::wstring whatApp, std::wstring whereApp, bool fEnable, unsigned long* error
+	);
 };
 

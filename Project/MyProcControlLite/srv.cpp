@@ -714,10 +714,50 @@ int ServiceCoreProcess::RealEntry() {
 }
 
 
-bool ServiceCoreProcess::RequestChangeProtection(bool fEnable, unsigned long* error) {
-	// TODO: add consent dialog
-	*error = ERROR_IMPLEMENTATION_LIMIT;
-	return false;
+bool ServiceCoreProcess::RequestChangeProtection(
+	DWORD client, DWORD session, std::wstring whatApp, std::wstring whereApp, bool fEnable, unsigned long* error
+) {
+	if (!fEnable) {
+		if (!MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(client, session, whatApp, 
+			L"Change Protection State", format(L"Process: ({}) {}\nProcess file: {}\nNew protection state: {}ABLE\nIf you "
+			L"want to continue, we will bring you to a secure desktop.", client, whatApp, whereApp, fEnable ? L"EN" : L"DIS"), 
+			L"Continue", L"Block", NULL, 30, TRUE)) {
+			*error = GetLastError();
+			return false;
+		}
+
+		lock_guard _gg(MyProcControl_Lite::consentUI_HighPermOpGlobalLock);
+
+		auto appPath = make_shared<WCHAR[]>(32768);
+		if (!GetModuleFileNameW(NULL, appPath.get(), 32768)) return false;
+		wstring optype = fEnable ? L"resumectl" : L"pausectl";
+		wstring sig = MyProcControl_Lite::ServiceCore::calculate_consent_sig(optype);
+		wstring cmd = std::format(L"consent.exe --type=consent --action=sc-control --name=\"{}\" "
+			L"--extra1=v1 --extra2=\"{}\" --signature={}",
+			ServiceCoreProcess::Instance->getName(), optype, sig
+		);
+		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+		if (!CreateProcessInSession(session, appPath.get(), cmd.data(),
+			NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
+			return false;
+		}
+		DWORD code{};
+		ResumeThread(pi.hThread);
+		CloseHandle(pi.hThread);
+		if (WAIT_OBJECT_0 != WaitForMultipleObjects(2, (array<decltype(pi.hProcess), 2>{
+			pi.hProcess, ServiceCoreProcess::Instance->getStopEvent()
+		}).data(), 0, 35000)) {
+			TerminateProcess(pi.hProcess, 0);
+		}
+		GetExitCodeProcess(pi.hProcess, &code);
+		CloseHandle(pi.hProcess);
+
+		bool acc = code & 0x100000;
+		if (!acc) {
+			*error = ERROR_ACCESS_DENIED;
+			return false;
+		}
+	}
 
 	_ProtectionDisabled = !fEnable;
 
