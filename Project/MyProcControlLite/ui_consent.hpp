@@ -1,11 +1,12 @@
 ﻿#pragma once
 #include "targetver.h"
 #include <w32use.hpp>
+#include <array>
 using namespace std;
 
 namespace MyProcControl_Lite {
 
-class ConsentDialog : public Window
+class SecondaryConsentDialog : public Window
 {
 private:
 	bool m_constructor_data__allow_remember;
@@ -25,12 +26,12 @@ private:
 	HFONT btnFont;
 
 public:
-	ConsentDialog(
+	SecondaryConsentDialog(
 		wstring app_name, wstring operation_name, wstring details,
 		wstring allow_button_text, wstring deny_button_text,
 		bool allow_remember, bool allow_extra, int times = 10
 	);
-	virtual ~ConsentDialog();
+	virtual ~SecondaryConsentDialog();
 
 protected:
 	virtual const COLORREF get_window_background_color() const {
@@ -78,6 +79,8 @@ public:
 		return m_remember;
 	}
 };
+
+int RunConsentUI(std::wstring name, std::wstring action, std::wstring signature, const std::array<std::string, 16>& u8extras);
 
 
 }

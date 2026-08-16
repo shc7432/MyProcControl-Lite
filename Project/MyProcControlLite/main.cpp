@@ -102,40 +102,8 @@ int WINAPI wWinMain(
 	}
 
 	if (type == L"consent") {
-		if (u8extras[6] != "1883") return ERROR_WRONG_PASSWORD;
-		if (u8extras[8].empty()) return ERROR_INVALID_PARAMETER;
 		if (!util_IsCurrentProcessSYSTEM()) return ERROR_SIGNAL_REFUSED;
-		wstring text = utf8_utf16(u8extras[7]);
-		wstring text_raw = text, nonce = utf8_utf16(u8extras[8]);
-		if (!MyProcControl_Lite::ConsentVerifySignature(text_raw, signature, L"MyProcControlLiteRpc_" + name))
-			return ERROR_ACCESS_DENIED;
-		EnableAllPrivileges(NULL);
-		auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
-		if (hDesk) {
-			SetThreadDesktop(hDesk);
-			CloseDesktop(hDesk);
-		}
-		int ttl = 10;
-		try { ttl = stoi(u8extras[5]); }
-		catch (...) {}
-		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
-		ConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
-			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
-		cdlg.create();
-		HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
-			HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
-			if (!hProcess) return GetLastError();
-			if (WAIT_OBJECT_0 != WaitForSingleObject(hProcess, INFINITE)) return GetLastError();
-			CloseHandle(hProcess);
-			ExitProcess(0);
-			return 0;
-		}, (PVOID)(ULONG_PTR)app::GetCurrentProcessPPID(), 0, 0);
-		if (hWaiter) CloseHandle(hWaiter);
-		cdlg.show();
-		cdlg.run(&cdlg);
-
-		int result = cdlg.result();
-		return result | (cdlg.remember() ? 0x20000000 : 0);
+		return RunConsentUI(name, action, signature, u8extras);
 	}
 
 	if (type == L"command-line-interface") {

@@ -1,7 +1,10 @@
 ﻿#include "ui_consent.hpp"
+#include "processhelper.h"
+#include "srvapi.hpp"
 using namespace std;
+using namespace w32oop::util::str::encodings;
 
-MyProcControl_Lite::ConsentDialog::ConsentDialog(
+MyProcControl_Lite::SecondaryConsentDialog::SecondaryConsentDialog(
 	wstring app_name, wstring operation_name, wstring details,
 	wstring allow_button_text, wstring deny_button_text,
 	bool allow_remember, bool allow_extra, int times
@@ -53,7 +56,7 @@ MyProcControl_Lite::ConsentDialog::ConsentDialog(
 	timesLeft = times;
 }
 
-MyProcControl_Lite::ConsentDialog::~ConsentDialog() {
+MyProcControl_Lite::SecondaryConsentDialog::~SecondaryConsentDialog() {
 	if (m_hWhiteBrush) DeleteObject(m_hWhiteBrush);
 	if (m_hTitleFont) DeleteObject(m_hTitleFont);
 	if (m_hLinePen) DeleteObject(m_hLinePen);
@@ -62,7 +65,7 @@ MyProcControl_Lite::ConsentDialog::~ConsentDialog() {
 }
 
 
-void MyProcControl_Lite::ConsentDialog::onCreated() {
+void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	add_style_ex(WS_EX_TOOLWINDOW);
 	
 	operation_content.set_parent(this);
@@ -176,13 +179,13 @@ void MyProcControl_Lite::ConsentDialog::onCreated() {
 	thread([this] { force_focus(); }).detach();
 }
 
-void MyProcControl_Lite::ConsentDialog::onDestroy() {
+void MyProcControl_Lite::SecondaryConsentDialog::onDestroy() {
 	notExited = false;
 	SetEvent(hCloseEvent);
 	if (timer_thread.joinable()) timer_thread.join();
 }
 
-void MyProcControl_Lite::ConsentDialog::onPaint(EventData& ev) {
+void MyProcControl_Lite::SecondaryConsentDialog::onPaint(EventData& ev) {
 	ev.preventDefault();
 
 	PAINTSTRUCT ps;
@@ -210,11 +213,11 @@ void MyProcControl_Lite::ConsentDialog::onPaint(EventData& ev) {
 	EndPaint(hwnd, &ps);
 }
 
-void MyProcControl_Lite::ConsentDialog::onFocus(EventData& ev) {
+void MyProcControl_Lite::SecondaryConsentDialog::onFocus(EventData& ev) {
 	set_topmost(true);
 }
 
-void MyProcControl_Lite::ConsentDialog::showMoreOptions() {
+void MyProcControl_Lite::SecondaryConsentDialog::showMoreOptions() {
 	RECT rc{}; GetWindowRect(deny_button, &rc);
 	int ret = Menu({
 		MenuItem(m_constructor_data__deny_button_text, 1),
@@ -266,7 +269,7 @@ void MyProcControl_Lite::ConsentDialog::showMoreOptions() {
 	this->close();
 }
 
-bool MyProcControl_Lite::ConsentDialog::doCopy() {
+bool MyProcControl_Lite::SecondaryConsentDialog::doCopy() {
 	wstring text;
 
 	// get data
@@ -294,6 +297,91 @@ bool MyProcControl_Lite::ConsentDialog::doCopy() {
 	CloseClipboard();
 	MessageBeep(MB_ICONINFORMATION);
 	return true;
+}
+
+
+static int _RunConsentUI_Secondary(
+	std::wstring name, std::wstring signature, const std::array<std::string, 16>& u8extras
+) {
+	if (u8extras[6] != "1883") return ERROR_WRONG_PASSWORD;
+	if (u8extras[8].empty()) return ERROR_INVALID_PARAMETER;
+	wstring text = utf8_utf16(u8extras[7]);
+	wstring text_raw = text, nonce = utf8_utf16(u8extras[8]);
+	if (!MyProcControl_Lite::ConsentVerifySignature(text_raw, signature, L"MyProcControlLiteRpc_" + name))
+		return ERROR_ACCESS_DENIED;
+	EnableAllPrivileges(NULL);
+	auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+	if (hDesk) {
+		SetThreadDesktop(hDesk);
+		CloseDesktop(hDesk);
+	}
+	int ttl = 10;
+	try { ttl = stoi(u8extras[5]); }
+	catch (...) {}
+	w32oop::util::str::operations::replace(text, nonce, L"\r\n");
+	MyProcControl_Lite::SecondaryConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
+		utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
+	cdlg.create();
+	HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
+		HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
+		if (!hProcess) return GetLastError();
+		if (WAIT_OBJECT_0 != WaitForSingleObject(hProcess, INFINITE)) return GetLastError();
+		CloseHandle(hProcess);
+		ExitProcess(0);
+		return 0;
+	}, (PVOID)(ULONG_PTR)app::GetCurrentProcessPPID(), 0, 0);
+	if (hWaiter) CloseHandle(hWaiter);
+	cdlg.show();
+	cdlg.run(&cdlg);
+
+	int result = cdlg.result();
+	return result | (cdlg.remember() ? 0x20000000 : 0);
+}
+
+static int _RunConsentUI_ScControl(
+	std::wstring name, std::wstring signature, const std::array<std::string, 16>& u8extras
+) {
+	if (u8extras[6] != "1883") return ERROR_WRONG_PASSWORD;
+	if (u8extras[8].empty()) return ERROR_INVALID_PARAMETER;
+	wstring text = utf8_utf16(u8extras[7]);
+	wstring text_raw = text, nonce = utf8_utf16(u8extras[8]);
+	if (!MyProcControl_Lite::ConsentVerifySignature(text_raw, signature, L"MyProcControlLiteRpc_" + name))
+		return ERROR_ACCESS_DENIED;
+	EnableAllPrivileges(NULL);
+	auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+	if (hDesk) {
+		SetThreadDesktop(hDesk);
+		CloseDesktop(hDesk);
+	}
+	int ttl = 10;
+	try { ttl = stoi(u8extras[5]); }
+	catch (...) {}
+	w32oop::util::str::operations::replace(text, nonce, L"\r\n");
+	MyProcControl_Lite::SecondaryConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
+		utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
+	cdlg.create();
+	HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
+		HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
+		if (!hProcess) return GetLastError();
+		if (WAIT_OBJECT_0 != WaitForSingleObject(hProcess, INFINITE)) return GetLastError();
+		CloseHandle(hProcess);
+		ExitProcess(0);
+		return 0;
+	}, (PVOID)(ULONG_PTR)app::GetCurrentProcessPPID(), 0, 0);
+	if (hWaiter) CloseHandle(hWaiter);
+	cdlg.show();
+	cdlg.run(&cdlg);
+
+	int result = cdlg.result();
+	return result | (cdlg.remember() ? 0x20000000 : 0);
+}
+
+int MyProcControl_Lite::RunConsentUI(
+	std::wstring name, std::wstring action, std::wstring signature, const std::array<std::string, 16>& u8extras
+) {
+	if (action == L"secondary") return _RunConsentUI_Secondary(name, signature, u8extras);
+	if (action == L"sc-control") return _RunConsentUI_ScControl(name, signature, u8extras);
+	return 87;
 }
 
 

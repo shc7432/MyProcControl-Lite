@@ -177,6 +177,7 @@
     <ClCompile Include="..\..\..\w32oop\System\Registry.cpp" />
     <ClCompile Include="..\..\..\w32oop\System\Service.cpp" />
     <ClCompile Include="..\lib\sha256\sha256.c" />
+    <ClCompile Include="..\lib\ui\BackgroundLayeredAlphaWindowClass.cpp" />
     <ClCompile Include="..\out\generated\midl\service_c.c" />
     <ClCompile Include="commandline.cpp" />
     <ClCompile Include="data_poller.cpp" />
@@ -233,6 +234,7 @@
     <ClInclude Include="..\..\..\w32oop\Utility\StringUtil\operations.hpp" />
     <ClInclude Include="..\..\..\w32oop\w32use.hpp" />
     <ClInclude Include="..\lib\sha256\sha256.h" />
+    <ClInclude Include="..\lib\ui\BackgroundLayeredAlphaWindowClass.h" />
     <ClInclude Include="commandline.h" />
     <ClInclude Include="data_poller.hpp" />
     <ClInclude Include="injectusinghelper.hpp" />

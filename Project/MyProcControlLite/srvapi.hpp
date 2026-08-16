@@ -2,6 +2,8 @@
 #include "targetver.h"
 #include <atomic>
 #include <string>
+#include <set>
+#include <mutex>
 
 namespace MyProcControl_Lite {
 
@@ -22,5 +24,14 @@ private:
 };
 
 bool ConsentVerifySignature(std::wstring payload, std::wstring sig, std::wstring endpoint);
+
+namespace ServiceCore {
+	extern std::wstring consent_secret;
+	std::wstring calculate_consent_sig(const std::wstring& payload, time_t r = 0);
+	std::set<std::wstring> calculate_possible_consent_sig(const std::wstring& payload);
+}
+
+extern std::recursive_mutex consentUI_HighPermOpGlobalLock;
+
 
 } // namespace MyProcControl_Lite

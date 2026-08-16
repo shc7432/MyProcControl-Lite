@@ -454,5 +454,28 @@ DWORD app::GetCurrentProcessPPID() {
 }
 
 
+bool app::IsTokenAdministrators(HANDLE hToken) {
+	SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+	PSID pAdminSid = NULL;
+	BOOL bIsMember = FALSE;
+
+	if (!AllocateAndInitializeSid(&ntAuthority, 2,
+		SECURITY_BUILTIN_DOMAIN_RID,
+		DOMAIN_ALIAS_RID_ADMINS,
+		0, 0, 0, 0, 0, 0,
+		&pAdminSid)) {
+		return FALSE;
+	}
+
+	if (!CheckTokenMembership(hToken, pAdminSid, &bIsMember)) {
+		FreeSid(pAdminSid);
+		return FALSE;
+	}
+
+	FreeSid(pAdminSid);
+	return bIsMember;
+}
+
+
 
 

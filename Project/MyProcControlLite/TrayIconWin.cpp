@@ -145,6 +145,15 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 			}, hwnd, svc).detach();
 		}),
 		// TODO: graphics process selector
+		MenuItem::separator(),
+		MenuItem(L"Control status...", 0xf01, [] {
+		}),
+		MenuItem(L"Pause control", 0xf02, [] {}),
+		MenuItem(L"Resume control", 0xf03, [] {}),
+		MenuItem::separator(),
+		MenuItem(L"Stop service", 0x1f00, [this] {
+			ShellExecuteW(NULL, L"runas", L"SC.EXE", (L"stop \"" + svc + L"\"").c_str(),NULL,SW_HIDE);
+		}),
 	});
 	icon.setMenu(&menu);
 	icon.setIcon(get_window_icon());

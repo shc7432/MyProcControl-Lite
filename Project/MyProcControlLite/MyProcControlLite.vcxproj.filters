@@ -120,6 +120,9 @@
     <ClCompile Include="commandline.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="..\lib\ui\BackgroundLayeredAlphaWindowClass.cpp">
+      <Filter>vendor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MyProcControlUI.rc">
@@ -276,6 +279,9 @@
     </ClInclude>
     <ClInclude Include="commandline.h">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\ui\BackgroundLayeredAlphaWindowClass.h">
+      <Filter>vendor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

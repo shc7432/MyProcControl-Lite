@@ -40,5 +40,7 @@ namespace app {
 	bool KillOrUninstallApplication(DWORD p, BOOL Uninst);
 
 	DWORD GetCurrentProcessPPID();
+
+	bool IsTokenAdministrators(HANDLE hToken);
 }
 

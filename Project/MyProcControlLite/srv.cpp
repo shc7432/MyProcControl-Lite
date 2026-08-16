@@ -707,4 +707,11 @@ int ServiceCoreProcess::RealEntry() {
 }
 
 
+bool ServiceCoreProcess::RequestDisableProtection(unsigned long* error) {
+
+
+	return true;
+}
+
+
 

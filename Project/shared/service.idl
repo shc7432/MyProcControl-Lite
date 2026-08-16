@@ -6,6 +6,8 @@ interface IServiceRpc
 {
 	int MyProcControlLite_ConsentUI_CheckAuthorization([in, string] const wchar_t* payload, [in, string] const wchar_t* sig);
 
+	int MyProcControlLite_ScControl([in] unsigned long control_name, [in] unsigned long long payload, [out] unsigned long* result);
+
 	int MyProcControlLite_LaunchWithControl([in, string] const wchar_t* application, [in, string] const wchar_t* cmdline, [out] int* bSuccess, [out] unsigned long* error);
 
 	int MyProcControlLite_RequestAddControl([in] unsigned long dwProcessId, [out] unsigned long* error);

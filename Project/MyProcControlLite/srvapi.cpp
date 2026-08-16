@@ -15,6 +15,7 @@ using namespace std;
 void MyProcControlLite_Server_OnEnumUserSession(DWORD count, PWTS_SESSION_INFOW pWtsSessionInfo);
 
 int MyProcControlLite_ConsentUI_CheckAuthorization_Impl2(handle_t IDL_handle, const wchar_t* payload, const wchar_t* sig);
+int MyProcControlLite_ScControl_Impl2(handle_t IDL_handle, unsigned long control_name, unsigned long long payload, unsigned long* result);
 int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR application, PCWSTR cmdline, int* bSuccess, unsigned long* error);
 int MyProcControlLite_Consent_CreateProcess_Impl2(
 	/* [in] */ handle_t IDL_handle,
@@ -34,11 +35,14 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 );
 int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long dwProcessId, unsigned long* error);
 
-static std::wstring consent_secret;
+std::wstring MyProcControl_Lite::ServiceCore::consent_secret;
+using MyProcControl_Lite::ServiceCore::consent_secret;
 static std::map<DWORD, std::recursive_mutex> consentUI_onlyOneInst;
 static std::recursive_mutex consentUI_onlyOneInst_accessLock;
 static std::map<DWORD, time_t> consentUI_BlockUntil;
 static std::recursive_mutex consentUI_BlockUntil_accessLock;
+
+std::recursive_mutex MyProcControl_Lite::consentUI_HighPermOpGlobalLock;
 
 static inline auto AcquireSessionConsentUILock(DWORD sessionId) {
 	if (consentUI_onlyOneInst.contains(sessionId) == false) {
@@ -72,6 +76,10 @@ void* __RPC_USER MIDL_user_allocate(_In_ size_t size)
 
 int MyProcControlLite_ConsentUI_CheckAuthorization_Impl(handle_t IDL_handle, const wchar_t* payload, const wchar_t* sig) {
 	return MyProcControlLite_ConsentUI_CheckAuthorization_Impl2(IDL_handle, payload, sig);
+}
+
+int MyProcControlLite_ScControl_Impl(handle_t IDL_handle, unsigned long control_name, unsigned long long payload, unsigned long* result) {
+	return MyProcControlLite_ScControl_Impl2(IDL_handle, control_name, payload, result);
 }
 
 int MyProcControlLite_LaunchWithControl_Impl(
@@ -200,7 +208,7 @@ void MyProcControlLite_Server_OnEnumUserSession(DWORD count, PWTS_SESSION_INFOW 
 	}
 }
 
-static wstring calculate_consent_sig(const wstring& payload, time_t r = 0) {
+wstring MyProcControl_Lite::ServiceCore::calculate_consent_sig(const wstring& payload, time_t r) {
 	if (!r) r = time(0) / 10;
 	wstring full_payload = to_wstring(payload.size()) + L"|" + payload + L"|" + consent_secret + L"|" + to_wstring(r);
 	char buffer[256]{};
@@ -209,7 +217,7 @@ static wstring calculate_consent_sig(const wstring& payload, time_t r = 0) {
 	return w32oop::util::str::encodings::utf8_utf16(buffer);
 }
 
-static set<wstring> calculate_possible_consent_sig(const wstring& payload) {
+set<wstring> MyProcControl_Lite::ServiceCore::calculate_possible_consent_sig(const wstring& payload) {
 	time_t t = time(0) / 10;
 	return set<wstring>{
 		calculate_consent_sig(payload, t - 1),
@@ -220,7 +228,7 @@ static set<wstring> calculate_possible_consent_sig(const wstring& payload) {
 
 int MyProcControlLite_ConsentUI_CheckAuthorization_Impl2(handle_t IDL_handle, const wchar_t* payload, const wchar_t* sig) {
 	if (!payload || !sig) return 0;
-	return !!(calculate_possible_consent_sig(payload).contains(sig));
+	return !!(MyProcControl_Lite::ServiceCore::calculate_possible_consent_sig(payload).contains(sig));
 }
 
 bool MyProcControl_Lite::ConsentVerifySignature(std::wstring payload, std::wstring sig, std::wstring endpoint) {
@@ -263,6 +271,74 @@ bool MyProcControl_Lite::ConsentVerifySignature(std::wstring payload, std::wstri
 
 		return rpcRet;
 	} (payload.c_str(), sig.c_str(), endpoint.c_str());
+}
+
+int MyProcControlLite_ScControl_Impl2(handle_t IDL_handle, unsigned long control_name, unsigned long long payload, unsigned long* result) {
+	if (!result) return 0;
+	RPC_STATUS status;
+	ULONG client_pid = 0;
+	status = I_RpcBindingInqLocalClientPID(IDL_handle, &client_pid);
+	if (status != RPC_S_OK) {
+		*result = GetLastError();
+		return 0;
+	}
+
+	w32ProcessHandle hCaller;
+	HANDLE hToken{};
+	try {
+		hCaller = OpenProcess(
+			PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SUSPEND_RESUME | PROCESS_CREATE_PROCESS,
+			FALSE, client_pid);
+		HANDLE hImpToken{};
+		OpenProcessToken(hCaller, TOKEN_DUPLICATE | TOKEN_QUERY, &hImpToken);
+		if (!hImpToken) throw runtime_error("");
+		DuplicateTokenEx(hImpToken, TOKEN_ALL_ACCESS, nullptr, SecurityImpersonation, TokenImpersonation, &hToken);
+		CloseHandle(hImpToken);
+		if (!hToken) throw runtime_error("");
+	}
+	catch (...) {
+		*result = GetLastError();
+		return 0;
+	}
+
+	if (!NT_SUCCESS(app::SuspendProcess(hCaller))) {
+		*result = GetLastError();
+		CloseHandle(hToken);
+		return 0;
+	}
+	w32oop::util::RAIIHelper c([&] { CloseHandle(hToken); app::ResumeProcess(hCaller); });
+
+	auto ensurePerm = [hToken, result] {
+		// check whether the caller process has permission to control the service
+		if (!app::IsTokenAdministrators(hToken)) {
+			*result = 0xC0000005;
+			return 0;
+		}
+		return 1;
+	};
+
+	// control
+	switch (control_name) {
+	case 1:
+		// 1: query protection status
+		*result = ServiceCoreProcess::Instance->IsProtectionDisabled() ? 0 : 1;
+		return 1;
+	case 2:
+		// 2: set protection status
+		if (!ensurePerm()) return 0;
+		{
+			bool prot = !ServiceCoreProcess::Instance->IsProtectionDisabled();
+			bool newProt = payload;
+			if (prot == newProt) {
+				*result = ERROR_REQUEST_OUT_OF_SEQUENCE;
+				return 0;
+			}
+			// update state
+			return ServiceCoreProcess::Instance->RequestDisableProtection(result);
+		}
+		break;
+	}
+	return 0;
 }
 
 int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR application, PCWSTR cmdline, int* bSuccess, unsigned long* error) {
@@ -360,9 +436,9 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		);
 		wstring randomNonce = GenerateUUIDW();
 		w32oop::util::str::operations::replace(detailedDetails, L"\n", randomNonce);
-		wstring sig = calculate_consent_sig(detailedDetails);
+		wstring sig = MyProcControl_Lite::ServiceCore::calculate_consent_sig(detailedDetails);
 		w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
-		wstring cmd = std::format(L"consent.exe --type=consent --name=\"{}\" "
+		wstring cmd = std::format(L"consent.exe --type=consent --action=secondary --name=\"{}\" "
 			L"--extra1=\"{}\" --extra2=LaunchWithControl --extra3=Allow --extra4=Deny "
 			L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --extra10=y --signature={}",
 			ServiceCoreProcess::Instance->getName(), callerName,
@@ -643,9 +719,9 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	);
 	wstring randomNonce = GenerateUUIDW();
 	w32oop::util::str::operations::replace(detailedDetails, L"\n", randomNonce);
-	wstring sig = calculate_consent_sig(detailedDetails);
+	wstring sig = MyProcControl_Lite::ServiceCore::calculate_consent_sig(detailedDetails);
 	w32oop::util::str::operations::replace(detailedDetails, L"\\", L"\\\\");
-	wstring cmd = std::format(L"consent.exe --type=consent --name=\"{}\" "
+	wstring cmd = std::format(L"consent.exe --type=consent --action=secondary --name=\"{}\" "
 		L"--extra1=\"{}\" --extra2={} --extra3=Allow --extra4=Deny "
 		L"--extra5=n --extra6=30 --extra7=1883 --extra8=\"{}\" --extra9={} --extra10=y --signature={}",
 		ServiceCoreProcess::Instance->getName(), callerName, type_s,

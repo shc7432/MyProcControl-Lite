@@ -117,5 +117,6 @@ protected:
 public:
 	const std::wstring& getName() const { return name; }
 	bool IsProtectionDisabled() const { return _ProtectionDisabled; }
+	bool RequestDisableProtection(unsigned long* error);
 };
 
