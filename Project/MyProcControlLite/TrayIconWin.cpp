@@ -1,9 +1,10 @@
 ﻿#include "TrayIconWin.hpp"
-#include "processhelper.h"
-#include "resource.h"
-#include "../out/generated/midl/service_h.h"
 #include <shobjidl.h>
 #include <shlobj.h>
+#include "processhelper.h"
+#include "srvapi.hpp"
+#include "resource.h"
+#include "../out/generated/midl/service_h.h"
 
 #pragma comment(lib, "RpcRT4.lib")
 
@@ -33,7 +34,7 @@ int MyProcControl_Lite::TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd
 	}
 	RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
 		RpcBindingFree(&hBinding);
-		return RPC_S_CALL_FAILED;
+		return GetExceptionCode();
 	}
 	RpcEndExcept
 
@@ -85,11 +86,11 @@ int MyProcControl_Lite::TrayIconWin_RequestAttachControl(
 
 HICON MyProcControl_Lite::UIService::TrayIconWindow::app_icon;
 
-[[nodiscard]] inline bool IsKeyDown(int vk) noexcept {
+[[nodiscard]] inline static bool IsKeyDown(int vk) noexcept {
 	return (GetAsyncKeyState(vk) & 0x8000) != 0;
 }
 
-[[nodiscard]] inline bool IsKeyUp(int vk) noexcept {
+[[nodiscard]] inline static bool IsKeyUp(int vk) noexcept {
 	return !IsKeyDown(vk);
 }
 
@@ -116,7 +117,7 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 			if (err != ERROR_SUCCESS) handleUserLaunchError(r.value(), err);
 		}),
 		MenuItem(L"Attach control to process by &PID", 0x23, [this] {
-			std::thread([] (HWND hwnd, wstring svc) {
+			std::thread([this] (HWND hwnd, wstring svc) {
 				EnableAllPrivileges(NULL);
 				unsigned long err = 0;
 				DWORD pid{};
@@ -141,15 +142,26 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 					MessageBoxW(hwnd, ErrorChecker(err).message().c_str(), NULL, MB_ICONERROR | MB_TOPMOST);
 					return;
 				}
-				MessageBoxTimeoutW(hwnd, L"Successfully attached to the process.", L"Success", MB_ICONINFORMATION, 0, 1000);
+				icon.showNotification(L"Attach to process", L"Successfully attached to the process.");
 			}, hwnd, svc).detach();
 		}),
 		// TODO: graphics process selector
 		MenuItem::separator(),
-		MenuItem(L"Control status...", 0xf01, [] {
+		MenuItem(L"Control status...", 0xf01, [this] {
+			ULONG r = 0xc0000001;
+			if (!MyProcControl_Lite::RpcClient::ScControl(1, 0, &r, (L"MyProcControlLiteRpc_" + svc).c_str())) {
+				MessageBoxW(NULL, ErrorChecker(r).message().c_str(), NULL, MB_ICONERROR);
+				return;
+			}
+			PCWSTR title = r ? L"Control is running" : L"Control is paused",
+				content = r ? L"The control is running currently." : L"The control is not running currently.";
+			int u{};
+			TaskDialog(NULL, hInst, L"Control Status", title, content, TDCBF_RETRY_BUTTON | TDCBF_CLOSE_BUTTON |
+				TDCBF_CANCEL_BUTTON, r ? TD_INFORMATION_ICON : TD_WARNING_ICON, &u);
+			if (u == IDRETRY) menu.pop();
 		}),
-		MenuItem(L"Pause control", 0xf02, [] {}),
-		MenuItem(L"Resume control", 0xf03, [] {}),
+		MenuItem(L"Pause control", 0xf02, [this] { doControlUpdate(0); }),
+		MenuItem(L"Resume control", 0xf03, [this] { doControlUpdate(1); }),
 		MenuItem::separator(),
 		MenuItem(L"Stop service", 0x1f00, [this] {
 			ShellExecuteW(NULL, L"runas", L"SC.EXE", (L"stop \"" + svc + L"\"").c_str(),NULL,SW_HIDE);
@@ -157,6 +169,15 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 	});
 	icon.setMenu(&menu);
 	icon.setIcon(get_window_icon());
+	icon.onBalloonClick([this](EventData& ev) {
+		ULONG r = 0xc0000001;
+		if (!MyProcControl_Lite::RpcClient::ScControl(1, 0, &r, (L"MyProcControlLiteRpc_" + svc).c_str())) {
+			MessageBoxW(hwnd, ErrorChecker(r).message().c_str(), NULL, MB_ICONERROR);
+			return;
+		}
+		if (r) return;
+		doControlUpdate(1);
+	});
 }
 
 HICON MyProcControl_Lite::UIService::TrayIconWindow::myicon() {
@@ -238,7 +259,7 @@ void MyProcControl_Lite::UIService::TrayIconWindow::handleUserLaunchError(wstrin
 			(cmd + L"\r\n\r\n" + L"Do you want to continue?").c_str(), TDCBF_YES_BUTTON | TDCBF_CANCEL_BUTTON,
 			TD_SHIELD_ICON, &u);
 		if (u == IDYES) {
-			LaunchElevated(cmd, err);
+			if (LaunchElevated(cmd, err)) return;
 		}
 	}
 	MessageBoxW(hwnd, ErrorChecker(err).message().c_str(), NULL, MB_ICONERROR);
@@ -270,6 +291,47 @@ bool MyProcControl_Lite::UIService::TrayIconWindow::LaunchElevated(wstring cmd, 
 		return true;
 	}
 	else return false;
+}
+
+
+void MyProcControl_Lite::UIService::TrayIconWindow::doControlUpdate(int newState) {
+	ULONG r = 0xc0000001;
+	if (!MyProcControl_Lite::RpcClient::ScControl(1, 0, &r, (L"MyProcControlLiteRpc_" + svc).c_str())) {
+		MessageBoxW(hwnd, ErrorChecker(r).message().c_str(), NULL, MB_ICONERROR);
+		return;
+	}
+	if (bool(r) == bool(newState)) {
+		MessageBoxW(hwnd, L"The control is already at the target state.", NULL, MB_ICONERROR);
+		return;
+	}
+
+	SHELLEXECUTEINFOW sei{};
+	sei.cbSize = sizeof(sei);
+	sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+	sei.lpVerb = L"runas";
+	sei.nShow = SW_SHOW;
+	auto program = make_unique<WCHAR[]>(32768);
+	GetModuleFileNameW(NULL, program.get(), 32768);
+	sei.lpFile = program.get();
+	wstring params = format(L"--type=command-line-interface --action=update-control-state "
+		L"--name=\"{}\" --extra1={}", svc, newState);
+	sei.lpParameters = params.c_str();
+	if (!(ShellExecuteExW(&sei) && sei.hProcess)) {
+		MessageBoxW(hwnd, ErrorChecker().message().c_str(), NULL, MB_ICONERROR);
+		return;
+	}
+	WaitForSingleObject(sei.hProcess, INFINITE);
+	DWORD code{};
+	GetExitCodeProcess(sei.hProcess, &code);
+	CloseHandle(sei.hProcess);
+	if (code != 0) {
+		MessageBoxW(NULL, ErrorChecker(code).message().c_str(), NULL, MB_ICONERROR);
+		return;
+	}
+	PCWSTR title = L"Update Control";
+	PCWSTR text = newState ? L"Control is enabled now." : L"Control has been disabled! Click to re-enable it now.";
+	UINT flags = newState ? NIIF_INFO : NIIF_WARNING;
+	icon.showNotification(title, text, flags);
 }
 
 

@@ -1,4 +1,5 @@
 ﻿#include "srvapi.hpp"
+#include "srv.hpp"
 #include "../out/generated/midl/service_h.h"
 #include "processhelper.h"
 #include "injectusinghelper.hpp"
@@ -311,7 +312,7 @@ int MyProcControlLite_ScControl_Impl2(handle_t IDL_handle, unsigned long control
 	auto ensurePerm = [hToken, result] {
 		// check whether the caller process has permission to control the service
 		if (!app::IsTokenAdministrators(hToken)) {
-			*result = 0xC0000005;
+			*result = 0xC0000022;
 			return 0;
 		}
 		return 1;
@@ -334,7 +335,7 @@ int MyProcControlLite_ScControl_Impl2(handle_t IDL_handle, unsigned long control
 				return 0;
 			}
 			// update state
-			return ServiceCoreProcess::Instance->RequestDisableProtection(result);
+			return ServiceCoreProcess::Instance->RequestChangeProtection(newProt, result);
 		}
 		break;
 	}
@@ -455,7 +456,9 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		DWORD code{};
 		ResumeThread(pi.hThread);
 		CloseHandle(pi.hThread);
-		if (WAIT_TIMEOUT == WaitForSingleObject(pi.hProcess, 35000)) {
+		if (WAIT_OBJECT_0 != WaitForMultipleObjects(2, (array<decltype(pi.hProcess), 2>{
+			pi.hProcess, ServiceCoreProcess::Instance->getStopEvent()
+		}).data(), 0, 35000)) {
 			TerminateProcess(pi.hProcess, 0);
 		}
 		GetExitCodeProcess(pi.hProcess, &code);
@@ -737,7 +740,9 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	DWORD code{};
 	ResumeThread(pi.hThread);
 	CloseHandle(pi.hThread);
-	if (WAIT_TIMEOUT == WaitForSingleObject(pi.hProcess, 35000)) {
+	if (WAIT_OBJECT_0 != WaitForMultipleObjects(2, (array<decltype(pi.hProcess), 2>{
+		pi.hProcess, ServiceCoreProcess::Instance->getStopEvent()
+	}).data(), 0, 35000)) {
 		TerminateProcess(pi.hProcess, 0);
 	}
 	GetExitCodeProcess(pi.hProcess, &code);
@@ -851,6 +856,41 @@ int MyProcControlLite_RequestAddControl_Impl2(handle_t IDL_handle, unsigned long
 
 	*error = 0;
 	return 1;
+}
+
+
+
+
+int MyProcControl_Lite::RpcClient::ScControl(unsigned long control_name, unsigned long long payload, unsigned long* result,
+	PCWSTR endpoint) {
+	RPC_WSTR bindingStr = nullptr;
+	RPC_STATUS status = RpcStringBindingComposeW(
+		nullptr,
+		(RPC_WSTR)L"ncalrpc",
+		nullptr,
+		(RPC_WSTR)endpoint,
+		nullptr,
+		&bindingStr);
+	if (status != RPC_S_OK) return (int)status;
+
+	RPC_BINDING_HANDLE hBinding = nullptr;
+	status = RpcBindingFromStringBindingW(bindingStr, &hBinding);
+	RpcStringFreeW(&bindingStr);
+	if (status != RPC_S_OK) return (int)status;
+
+	int rpcRet = 0;
+	RpcTryExcept{
+		rpcRet = MyProcControlLite_ScControl(hBinding, control_name, payload, result);
+	}
+	RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
+		RpcBindingFree(&hBinding);
+		return GetExceptionCode();
+	}
+	RpcEndExcept
+
+	RpcBindingFree(&hBinding);
+
+	return rpcRet;
 }
 
 

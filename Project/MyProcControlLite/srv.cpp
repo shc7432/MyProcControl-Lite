@@ -27,9 +27,13 @@ WindowsService::WindowsService(const std::wstring& serviceName)
 	m_status.dwServiceSpecificExitCode = 0;
 	m_status.dwCheckPoint = 0;
 	m_status.dwWaitHint = 0;
-	stopEvent = CreateEventW(NULL, TRUE, FALSE, FALSE);
-	if (!stopEvent) throw exception("Init failed: Cannot create event");
 	m_status.dwControlsAccepted |= SERVICE_ACCEPT_STOP;
+
+	stopEvent = CreateEventW(NULL, TRUE, FALSE, FALSE);
+	if (!stopEvent) __crash();
+	SECURITY_ATTRIBUTES can_inherit{ .nLength = sizeof(SECURITY_ATTRIBUTES), .bInheritHandle = TRUE };
+	hSwStopEvent = CreateEventW(&can_inherit, TRUE, FALSE, NULL);
+	if (!hSwStopEvent) __crash();
 	appPath = make_shared<WCHAR[]>(32768);
 	GetModuleFileNameW(NULL, appPath.get(), 32768);
 }
@@ -42,6 +46,7 @@ WindowsService::~WindowsService() {
 		m_stopThread.join();
 	}
 	CloseHandle(stopEvent);
+	CloseHandle(hSwStopEvent);
 }
 
 static VOID WINAPI srv_main(
@@ -283,7 +288,10 @@ void WindowsService::OnPause() {
 	if (m_status.dwCurrentState == SERVICE_RUNNING) {
 		ReportStatus(SERVICE_PAUSE_PENDING);
 		m_pauseRequested = true;
-		SuspendThread(m_coreThread.native_handle());
+
+		if (hSwStopEvent) SetEvent(hSwStopEvent);
+
+		//SuspendThread(m_coreThread.native_handle());
 		m_status.dwControlsAccepted |= SERVICE_ACCEPT_STOP;
 		ReportStatus(SERVICE_PAUSED);
 	}
@@ -292,8 +300,11 @@ void WindowsService::OnPause() {
 void WindowsService::OnContinue() {
 	if (m_status.dwCurrentState == SERVICE_PAUSED) {
 		ReportStatus(SERVICE_CONTINUE_PENDING);
+
+		if (hSwStopEvent) ResetEvent(hSwStopEvent);
+
 		m_pauseRequested = false;
-		ResumeThread(m_coreThread.native_handle());
+		//ResumeThread(m_coreThread.native_handle());
 		m_status.dwControlsAccepted &= ~SERVICE_ACCEPT_STOP;
 		m_status.dwControlsAccepted |= SERVICE_ACCEPT_STOP;
 		ReportStatus(SERVICE_RUNNING);
@@ -327,6 +338,7 @@ void WindowsService::OnShutdown() {
 	ReportStatus(SERVICE_STOPPED);
 	m_isRunning = false;
 	SetEvent(stopEvent);
+	ResumeThread(m_coreThread.native_handle());
 	Sleep(5000);
 	ExitProcess(0);
 }
@@ -340,7 +352,7 @@ void WindowsService::ServiceStopThread() {
 	ReportStatus(SERVICE_STOP_PENDING);
 
 	if (HANDLE h = CreateThread(NULL, NULL, [](PVOID)->DWORD {
-		Sleep(15000);
+		Sleep(16000);
 		ExitProcess(ERROR_TIMEOUT);
 		return 0;
 	}, NULL, 0, 0)) {
@@ -440,19 +452,16 @@ void WindowsService::PrepareEnvironment() {
 
 void WindowsService::ServiceCoreThread() {
 	// Local variables
-	HANDLE serviceWorkerProcess{}, hSwStopEvent{};
+	HANDLE serviceWorkerProcess{};
 	vector<HANDLE> waitObjects;
 	ReportStatus(SERVICE_RUNNING);
 
 	HANDLE hCrashpadHandler{};
-	SECURITY_ATTRIBUTES can_inherit{ .nLength = sizeof(SECURITY_ATTRIBUTES), .bInheritHandle = TRUE };
-	hSwStopEvent = CreateEventW(&can_inherit, TRUE, FALSE, NULL);
-	if (!hSwStopEvent) __crash();
 
 	// TODO: if failure many times then wait
 	while (!m_stopRequested) {
 		if (m_pauseRequested) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			SleepEx(500, 1);
 			continue;
 		}
 
@@ -488,7 +497,6 @@ void WindowsService::ServiceCoreThread() {
 		CloseHandle(serviceWorkerProcess);
 	}
 	if (hCrashpadHandler) CloseHandle(hCrashpadHandler);
-	if (hSwStopEvent) CloseHandle(hSwStopEvent);
 
 }
 
@@ -567,7 +575,6 @@ int ServiceCoreProcess::RealEntry() {
 	map<DWORD, HANDLE> sessionProcesses;
 	w32ProcessHandle hParent;
 	std::array<HANDLE, 2> InjectHelperProcess{ NULL, NULL };
-	w32EventHandle hStop{};
 	constexpr DWORD WORKER_SLEEPTIME = 2000;
 	try {
 		hParent = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, ppid);
@@ -707,8 +714,12 @@ int ServiceCoreProcess::RealEntry() {
 }
 
 
-bool ServiceCoreProcess::RequestDisableProtection(unsigned long* error) {
+bool ServiceCoreProcess::RequestChangeProtection(bool fEnable, unsigned long* error) {
+	// TODO: add consent dialog
+	*error = ERROR_IMPLEMENTATION_LIMIT;
+	return false;
 
+	_ProtectionDisabled = !fEnable;
 
 	return true;
 }

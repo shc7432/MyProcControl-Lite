@@ -1,5 +1,6 @@
 ﻿#include "commandline.h"
 #include "processhelper.h"
+#include "srvapi.hpp"
 #include "TrayIconWin.hpp"
 using namespace std;
 
@@ -39,6 +40,21 @@ int RunCommandLineInterface(std::wstring name, std::wstring action, const std::a
 			if (!ReadProcessMemory(hProcess, (LPCVOID)mem, Mybuf.get(), size, &r)) return GetLastError();
 			auto Mydata = (PCWSTR)Mybuf.get();
 			return MyProcControl_Lite::TrayIconWin_RequestLaunchProc(L"", Mydata, (L"MyProcControlLiteRpc_" + name).c_str());
+		}
+		catch (...) {
+			return GetLastError();
+		}
+		return 0;
+	}
+	else if (action == L"update-control-state") {
+		try {
+			int newState = stoi(u8extras[0]);
+			wstring p = L"MyProcControlLiteRpc_" + name;
+
+			unsigned long err = 0;
+			bool ok = MyProcControl_Lite::RpcClient::ScControl(2, newState, &err, p.c_str());
+			if (ok) return 0;
+			else return (int)err;
 		}
 		catch (...) {
 			return GetLastError();

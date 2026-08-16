@@ -34,6 +34,7 @@ protected:
 	void LaunchWithControl();
 	void handleUserLaunchError(wstring cmd, int err);
 	bool LaunchElevated(wstring cmd, int& err);
+	void doControlUpdate(int newState);
 };
 
 }

@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <fstream>
 #include "remote_caller.hpp"
+#include <w32use.hpp>
 
 namespace MyProcControl_Lite {
 	class MyWindowsServiceInjectHelper;
@@ -69,7 +70,7 @@ private:
 	SERVICE_STATUS m_status;
 	std::thread m_coreThread;
 	std::thread m_stopThread;
-	HANDLE stopEvent;
+	HANDLE stopEvent, hSwStopEvent;
 	std::atomic<bool> m_stopRequested;
 	std::atomic<bool> m_pauseRequested;
 	std::atomic<bool> m_isRunning;
@@ -112,11 +113,14 @@ protected:
 	HANDLE injector86_in{}, injector86_out{}, injector64_in{}, injector64_out{};
 	std::unique_ptr<app::RemoteCaller> injectHelperCaller64, injectHelperCaller86;
 
+	w32EventHandle hStop;
+
 	bool _ProtectionDisabled = false;
 
 public:
 	const std::wstring& getName() const { return name; }
+	HANDLE getStopEvent() const { return hStop; }
 	bool IsProtectionDisabled() const { return _ProtectionDisabled; }
-	bool RequestDisableProtection(unsigned long* error);
+	bool RequestChangeProtection(bool fEnable, unsigned long* error);
 };
 

@@ -34,4 +34,9 @@ namespace ServiceCore {
 extern std::recursive_mutex consentUI_HighPermOpGlobalLock;
 
 
+namespace RpcClient {
+	int ScControl(unsigned long control_name, unsigned long long payload, unsigned long* result, PCWSTR endpoint);
+}
+
+
 } // namespace MyProcControl_Lite
