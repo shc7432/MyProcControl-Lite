@@ -55,7 +55,7 @@ BOOL CreateProcessInSession(_In_ DWORD dwSessionId,
 
 	//复制当前用户的令牌
 	if (!DuplicateTokenEx(hPToken, MAXIMUM_ALLOWED, NULL,
-		SecurityIdentification, TokenPrimary, &hUserTokenDup)) {
+		SecurityImpersonation, TokenPrimary, &hUserTokenDup)) {
 		CloseHandle(hPToken);
 		return FALSE;
 	}

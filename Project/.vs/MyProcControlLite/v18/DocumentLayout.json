@@ -1,53 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srvapi.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\srvapi.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\srv.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    }
-  ],
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": [
-        {
-          "DockedWidth": 200,
-          "SelectedChildIndex": 0,
-          "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "srvapi.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srvapi.cpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\srvapi.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srvapi.cpp",
-              "RelativeToolTip": "MyProcControlLite\\srvapi.cpp",
-              "ViewState": "AgIAAJgCAAAAala2DxUiwK4CAAACAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-16T19:07:35.9Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "srv.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.cpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\srv.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\srv.cpp",
-              "RelativeToolTip": "MyProcControlLite\\srv.cpp",
-              "ViewState": "AgIAANcCAAAAmmpmLXUCwN8CAAAxAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-16T17:34:59.653Z"
-            }
-          ]
-        }
-      ]
+      "DocumentGroups": []
     }
   ]
 }
