@@ -163,6 +163,9 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 		MenuItem(L"Pause control", 0xf02, [this] { doControlUpdate(0); }),
 		MenuItem(L"Resume control", 0xf03, [this] { doControlUpdate(1); }),
 		MenuItem::separator(),
+		MenuItem(L"Restart tray", 0x1, [this] {
+			destroy();
+		}),
 		MenuItem(L"Stop service", 0x1f00, [this] {
 			ShellExecuteW(NULL, L"runas", L"SC.EXE", (L"stop \"" + svc + L"\"").c_str(),NULL,SW_HIDE);
 		}),

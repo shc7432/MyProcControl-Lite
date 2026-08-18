@@ -97,11 +97,14 @@ public:
 
 protected:
 	void PrepareEnvironment();
+	void LoadConfig();
 	int RealEntry();
 
 	std::wstring name;
 	DWORD ppid{};
 	std::string extra_hStop;
+
+	RegistryKey hServiceState;
 
 	std::shared_ptr<WCHAR[]> appPath;
 	WCHAR system32[260]{}, Temp[260]{};
@@ -116,6 +119,7 @@ protected:
 	w32EventHandle hStop;
 
 	bool _ProtectionDisabled = false;
+	bool _FailOpen = false;
 
 public:
 	const std::wstring& getName() const { return name; }
@@ -124,5 +128,6 @@ public:
 	bool RequestChangeProtection(
 		DWORD client, DWORD session, std::wstring whatApp, std::wstring whereApp, bool fEnable, unsigned long* error
 	);
+	bool IsFailOpen() const { return _FailOpen; }
 };
 

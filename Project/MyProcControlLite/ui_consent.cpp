@@ -27,32 +27,8 @@ MyProcControl_Lite::SecondaryConsentDialog::SecondaryConsentDialog(
 	// 创建白色背景画刷
 	m_hWhiteBrush = CreateSolidBrush(RGB(0xFF, 0xFF, 0xFF));
 
-	// 创建标题字体
-	m_hTitleFont = CreateFont(
-		20, 0, 0, 0, FW_NORMAL,
-		FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
-		L"Consolas"
-	);
-
 	// 创建分隔线画笔
 	m_hLinePen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-
-	contentFont = CreateFont(
-		24, 0, 0, 0, FW_NORMAL,
-		FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
-		L"Consolas"
-	);
-	btnFont = CreateFont(
-		20, 0, 0, 0, FW_NORMAL,
-		FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
-		L"Consolas"
-	);
 
 	timesLeft = times;
 }
@@ -68,6 +44,30 @@ MyProcControl_Lite::SecondaryConsentDialog::~SecondaryConsentDialog() {
 
 void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	add_style_ex(WS_EX_TOOLWINDOW);
+
+	// 创建标题字体
+	m_hTitleFont = CreateFontW(
+		scaled(20), 0, 0, 0, FW_NORMAL,
+		FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+		L"Consolas"
+	);
+
+	contentFont = CreateFontW(
+		scaled(24), 0, 0, 0, FW_NORMAL,
+		FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+		L"Consolas"
+	);
+	btnFont = CreateFontW(
+		scaled(20), 0, 0, 0, FW_NORMAL,
+		FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+		L"Consolas"
+	);
 	
 	operation_content.set_parent(this);
 	operation_content.create(m_constructor_data__app_name + L" wants to " + 
@@ -144,7 +144,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	// 获取桌面大小
 	RECT rc{}, rcwindow{};
 	SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
-	GetWindowRect(hwnd, &rcwindow);
+	::GetWindowRect(hwnd, &rcwindow);
 
 	// 把窗口放置在右下角，距离屏幕边缘 10 像素
 	int width = rcwindow.right - rcwindow.left;
@@ -154,7 +154,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	int x = rc.right - width - 10;
 	int y = rc.bottom - height - 10;
 
-	move_to(x, y);
+	SetWindowPos(hwnd, nullptr, (x), (y), 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
 	set_topmost(true);
 
@@ -193,7 +193,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::onPaint(EventData& ev) {
 	HDC hdc = BeginPaint(hwnd, &ps);
 
 	// 1. 绘制顶部白色背景 (480x40)
-	RECT headerRect = { 0, 0, 480, 40 };
+	RECT headerRect = { 0, 0, scaled(480), scaled(40) };
 	FillRect(hdc, &headerRect, m_hWhiteBrush);
 
 	// 2. 绘制标题文本
@@ -204,8 +204,8 @@ void MyProcControl_Lite::SecondaryConsentDialog::onPaint(EventData& ev) {
 
 	// 3. 绘制黑色分隔线
 	HPEN hOldPen = (HPEN)SelectObject(hdc, m_hLinePen);
-	MoveToEx(hdc, 0, 40, nullptr);
-	LineTo(hdc, 480, 40);
+	MoveToEx(hdc, scaled(0), scaled(40), nullptr);
+	LineTo(hdc, scaled(480), scaled(40));
 
 	// 恢复原始对象
 	SelectObject(hdc, hOldFont);
@@ -247,7 +247,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::showMoreOptions() {
 		MenuItem::separator(),
 		MenuItem(L"C&lose the application", 2),
 		MenuItem(L"Close and &uninstall the application", 3),
-	}).pop(rc.left, rc.bottom);
+	}).pop(rc.left, rc.bottom, true, this);
 	if (!ret) return;
 	switch (ret) {
 	case 1:

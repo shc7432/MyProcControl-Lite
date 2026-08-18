@@ -507,8 +507,16 @@ int ServiceCoreProcess::ServiceWorkerProcess(wstring name, DWORD ppid, string ex
 	scp.ppid = ppid;
 	scp.extra_hStop = extra_hStop;
 	ServiceCoreProcess::Instance = &scp;
-	scp.PrepareEnvironment();
-	return scp.RealEntry();
+	try {
+		scp.PrepareEnvironment();
+		scp.LoadConfig();
+		return scp.RealEntry();
+	}
+	catch (std::exception& e) {
+		OutputDebugStringA(("unexpected error: "s + e.what()).c_str());
+		WindowsService::__crash();
+	}
+	return -1;
 }
 
 
@@ -567,6 +575,38 @@ void ServiceCoreProcess::PrepareEnvironment() {
 			WindowsService::__crash();
 	}
 	CloseHandle(hFile);
+}
+
+typedef enum _SERVICE_SHARED_REGISTRY_STATE_TYPE {
+	ServiceSharedRegistryPersistentState
+} SERVICE_SHARED_REGISTRY_STATE_TYPE;
+typedef DWORD(WINAPI* PFN_GetSharedServiceRegistryStateKey)(
+	SC_HANDLE ServiceHandle,
+	SERVICE_SHARED_REGISTRY_STATE_TYPE StateType,
+	DWORD AccessMask,
+	HKEY* ServiceStateKey
+	);
+
+void ServiceCoreProcess::LoadConfig() {
+	ServiceManager scm;
+	Service myService = scm.get(name);
+	RegistryKey hServiceKey(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Services\\" + name);
+	w32oop::core::w32BaseHandle<HMODULE, false, FreeLibrary, runtime_error> advapi32 = LoadLibraryW(L"advapi32.dll");
+	auto GetSharedServiceRegistryStateKey = 
+		(PFN_GetSharedServiceRegistryStateKey)app::GetProcAddress(advapi32, "GetSharedServiceRegistryStateKey");
+	if (GetSharedServiceRegistryStateKey) {
+		HKEY myKey{};
+		GetSharedServiceRegistryStateKey(myService, ServiceSharedRegistryPersistentState, KEY_ALL_ACCESS, &myKey);
+		hServiceState = myKey;
+	}
+	else {
+		hServiceState = hServiceKey.create(L"State");
+	}
+	hServiceState.validate();
+	auto Parameters = hServiceKey.create(L"Parameters");
+
+	DWORD FailOpen = Parameters.get_value_or<DWORD>(L"FailOpen", 0);
+	this->_FailOpen = FailOpen;
 }
 
 
@@ -718,6 +758,7 @@ bool ServiceCoreProcess::RequestChangeProtection(
 	DWORD client, DWORD session, std::wstring whatApp, std::wstring whereApp, bool fEnable, unsigned long* error
 ) {
 	if (!fEnable) {
+		SetLastError(ERROR_ACCESS_DENIED);
 		if (!MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(client, session, whatApp, 
 			L"Change Protection State", format(L"Process: ({}) {}\nProcess file: {}\nNew protection state: {}ABLE\nIf you "
 			L"want to continue, we will bring you to a secure desktop.", client, whatApp, whereApp, fEnable ? L"EN" : L"DIS"), 

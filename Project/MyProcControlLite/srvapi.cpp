@@ -434,7 +434,7 @@ bool MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(
 					MB_ICONERROR, 0, &tmp, FALSE);
 			}
 		}
-		SetLastError(0xC0000022);
+		SetLastError(prevErr ? prevErr : 0xC0000022);
 		return false;
 	}
 	return true;

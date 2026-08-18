@@ -22,8 +22,8 @@ private:
 	HBRUSH m_hWhiteBrush = nullptr;
 	HFONT m_hTitleFont = nullptr;
 	HPEN m_hLinePen = nullptr;
-	HFONT contentFont;
-	HFONT btnFont;
+	HFONT contentFont{};
+	HFONT btnFont{};
 
 public:
 	SecondaryConsentDialog(

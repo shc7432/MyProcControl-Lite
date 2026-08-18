@@ -82,7 +82,8 @@ int WINAPI wWinMain(
 	}
 
 	if (type == L"tray-icon") {
-		HANDLE ppidn = (HANDLE)(ULONG_PTR)stoull(ppid);
+		HANDLE ppidn{};
+		try { ppidn = (HANDLE)(ULONG_PTR)stoull(ppid); } catch (...) {}
 		if (ppidn) {
 			HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
 				HANDLE hProcess = (HANDLE)(ULONG_PTR)p;

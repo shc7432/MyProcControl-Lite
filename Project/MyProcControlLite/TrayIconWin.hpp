@@ -22,6 +22,9 @@ protected:
 	std::wstring m_rpcEndpoint;
 	void onCreated();
 	virtual void setup_event_handlers() override {
+		WINDOW_add_handler(WM_CLOSE, [this](EventData& ev) {
+			ev.preventDefault();
+		});
 		WINDOW_add_handler(WM_ENDSESSION, [this](EventData&) {
 			PostQuitMessage(ERROR_SHUTDOWN_IN_PROGRESS);
 		});
