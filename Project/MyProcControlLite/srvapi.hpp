@@ -43,7 +43,7 @@ namespace ServiceCore {
 		DWORD client_pid, DWORD dwSessionId,
 		std::wstring app, std::wstring req, std::wstring detailsText,
 		std::wstring allowBtn, std::wstring denyBtn, bool* remember,
-		int timeout, bool showSplitMenu
+		int timeout, bool showSplitMenu, size_t = 10
 	);
 }
 

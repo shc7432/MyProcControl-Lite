@@ -11,6 +11,7 @@
 #include "setupui.h"
 #include "commandline.h"
 #include "TrayIconWin.hpp"
+#include "../lib/ui/BackgroundLayeredAlphaWindowClass.h"
 using namespace std;
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
@@ -101,6 +102,20 @@ int WINAPI wWinMain(
 		win.set_main_window();
 		return win.run();
 	}
+
+#if 0
+	if (type == L"consent-test") {
+		Window::set_global_option(Window::Option_DebugMode, 1);
+		RegClass_BackgroundLayeredAlphaWindowClass();
+		MyProcControl_Lite::SecondaryConsentDialog cdlg(L"u8e0", L"u8e1", L"text",
+			L"u8e2", L"u8e3", u8extras[4] == "y", u8extras[9] == "y", 30);
+		cdlg.create();
+		cdlg.show();
+		cdlg.run(&cdlg);
+		int result = cdlg.result();
+		return int(result | (cdlg.remember() ? 0x20000000 : 0));
+	}
+#endif
 
 	if (type == L"consent") {
 		if (!util_IsCurrentProcessSYSTEM()) return ERROR_SIGNAL_REFUSED;

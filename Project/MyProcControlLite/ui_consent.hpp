@@ -6,6 +6,15 @@ using namespace std;
 
 namespace MyProcControl_Lite {
 
+namespace UIService::internal {
+	class MyStatic :public Static {
+	public:
+		MyStatic() : Static() {
+			ctlid = NULL;
+		}
+	};
+}
+
 class SecondaryConsentDialog : public Window
 {
 private:
@@ -19,6 +28,8 @@ private:
 
 private:
 	w32EventHandle hCloseEvent;
+	HWND hLocker;
+	UIService::internal::MyStatic m_lockerText;
 	HBRUSH m_hWhiteBrush = nullptr;
 	HFONT m_hTitleFont = nullptr;
 	HPEN m_hLinePen = nullptr;
@@ -44,24 +55,18 @@ protected:
 	CheckBox remember_checkbox;
 
 private:
-	void onCreated();
-	void onDestroy();
+	void onCreated() override;
+	void onDestroy() override;
 	void onPaint(EventData& ev);
 	void onFocus(EventData& ev);
+	void onSessionChange(EventData& ev);
 
+	bool isLocked = false;
+	void setLocked(bool bLocked);
 	void showMoreOptions();
 	bool doCopy();
 
-	virtual void setup_event_handlers() override {
-		WINDOW_add_handler(WM_NCHITTEST, [this](EventData& ev) {
-			ev.returnValue(HTCAPTION);
-		});
-		WINDOW_add_handler(WM_CLOSE, [this](EventData& ev) {
-			notExited = false;
-		});
-		WINDOW_add_handler(WM_PAINT, onPaint);
-		WINDOW_add_handler(WM_SETFOCUS, onFocus);
-	}
+	virtual void setup_event_handlers() override;
 
 private:
 	int m_result;

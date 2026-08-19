@@ -1,9 +1,13 @@
 ﻿#include "ui_consent.hpp"
 #include "processhelper.h"
 #include "srvapi.hpp"
+#include <WtsApi32.h>
+#include <VersionHelpers.h>
 #include "../lib/ui/BackgroundLayeredAlphaWindowClass.h"
 using namespace std;
 using namespace w32oop::util::str::encodings;
+
+static bool IsWorkStationLocked(DWORD dwSessionId = (DWORD)-1);
 
 MyProcControl_Lite::SecondaryConsentDialog::SecondaryConsentDialog(
 	wstring app_name, wstring operation_name, wstring details,
@@ -31,6 +35,7 @@ MyProcControl_Lite::SecondaryConsentDialog::SecondaryConsentDialog(
 	m_hLinePen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
 
 	timesLeft = times;
+	hLocker = 0;
 }
 
 MyProcControl_Lite::SecondaryConsentDialog::~SecondaryConsentDialog() {
@@ -44,6 +49,13 @@ MyProcControl_Lite::SecondaryConsentDialog::~SecondaryConsentDialog() {
 
 void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	add_style_ex(WS_EX_TOOLWINDOW);
+
+	hLocker = CreateWindowExW(0, BackgroundLayeredAlphaWindowClassNameW, L"", WS_POPUP, 0, 0, 1, 1, hwnd, 0, 0, 0);
+	m_lockerText.set_parent(hLocker);
+	m_lockerText.create(L"\r\n\r\nUnlock the workstation\r\nto process the\r\nconsent request.",
+		240, 120, 0, 0, WS_POPUP | WS_BORDER | SS_CENTER);
+
+	if (IsWorkStationLocked()) setLocked(true);
 
 	// 创建标题字体
 	m_hTitleFont = CreateFontW(
@@ -89,16 +101,19 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	deny_button.font(btnFont);
 
 	allow_button.onClick([this](EventData&) {
+		if (isLocked) return;
 		m_result = 0x10000000;
 		notExited = false;
 		this->close();
 	});
 	deny_button.onClick([this](EventData&) {
+		if (isLocked) return;
 		m_result = 0;
 		notExited = false;
 		this->close();
 	});
 	deny_button.on(BCN_DROPDOWN, [this](EventData& ev) {
+		if (isLocked) return;
 		if (!m_constructor_data__allow_extras) return;
 		ev.preventDefault();
 		showMoreOptions();
@@ -106,12 +121,14 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 
 	register_hot_key(true, false, false, VK_RETURN, [this](HotKeyProcData& ev) {
 		ev.preventDefault();
+		if (isLocked) return;
 		m_result = 0x10000000;
 		notExited = false;
 		this->close();
 	}, HotKeyOptions::Windowed);
 	register_hot_key(false, false, false, VK_ESCAPE, [this](HotKeyProcData& ev) {
 		ev.preventDefault();
+		if (isLocked) return;
 		m_result = 0;
 		notExited = false;
 		this->close();
@@ -125,16 +142,19 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	remember_checkbox.enable(m_constructor_data__allow_remember);
 	register_hot_key(true, false, false, 'R', [this](HotKeyProcData& ev) {
 		ev.preventDefault();
+		if (isLocked) return;
 		if (!m_constructor_data__allow_remember) return;
 		remember_checkbox.check(!remember_checkbox.checked());
 		m_remember = remember_checkbox.checked();
 	}, HotKeyOptions::Windowed);
 	register_hot_key(true, false, true, 'C', [this](HotKeyProcData& ev) {
 		ev.preventDefault();
+		if (isLocked) return;
 		if (!doCopy()) MessageBoxW(NULL, ErrorChecker().message().c_str(), L"Cannot Copy", MB_ICONERROR);
 	}, HotKeyOptions::Windowed);
 	register_hot_key(false, false, true, VK_F10, [this](HotKeyProcData& ev) {
 		if (!m_constructor_data__allow_extras) return;
+		if (isLocked) return;
 		ev.preventDefault();
 		showMoreOptions();
 	}, HotKeyOptions::Windowed);
@@ -183,6 +203,8 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 void MyProcControl_Lite::SecondaryConsentDialog::onDestroy() {
 	notExited = false;
 	SetEvent(hCloseEvent);
+	WTSUnRegisterSessionNotification(hwnd);
+	if (hLocker) DestroyWindow(hLocker);
 	if (timer_thread.joinable()) timer_thread.join();
 }
 
@@ -216,9 +238,34 @@ void MyProcControl_Lite::SecondaryConsentDialog::onPaint(EventData& ev) {
 
 void MyProcControl_Lite::SecondaryConsentDialog::onFocus(EventData& ev) {
 	set_topmost(true);
+	if (IsWorkStationLocked()) setLocked(true);
+}
+
+void MyProcControl_Lite::SecondaryConsentDialog::onSessionChange(EventData& ev) {
+	if (ev.wParam == WTS_SESSION_LOCK) {
+		setLocked(true);
+	}
+	if (ev.wParam == WTS_SESSION_UNLOCK) {
+		setLocked(false);
+	}
+}
+
+void MyProcControl_Lite::SecondaryConsentDialog::setLocked(bool bLocked) {
+	isLocked = bLocked;
+	enable(!isLocked);
+	ShowWindow(hLocker, isLocked ? SW_SHOW : SW_HIDE);
+	SendMessageW(hLocker, WM_SIZE, 0, 0);
+	if (m_lockerText.created()) { m_lockerText.show(bLocked ? SW_SHOW : SW_HIDE); m_lockerText.center(hLocker); }
+	if (allow_button.created()) allow_button.enable(!isLocked);
+	if (deny_button.created()) deny_button.enable(!isLocked);
+	if (operation_content.created()) operation_content.enable(!isLocked);
+	if (details_content.created()) details_content.enable(!isLocked);
+	if (remember_checkbox.created()) remember_checkbox.enable(isLocked ? false : m_constructor_data__allow_remember);
+	if (isLocked) blur();
 }
 
 void MyProcControl_Lite::SecondaryConsentDialog::showMoreOptions() {
+	if (isLocked) return;
 	RECT rc{}; GetWindowRect(deny_button, &rc);
 	int ret = Menu({
 		MenuItem(m_constructor_data__deny_button_text, 1),
@@ -271,6 +318,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::showMoreOptions() {
 }
 
 bool MyProcControl_Lite::SecondaryConsentDialog::doCopy() {
+	if (isLocked) return false;
 	wstring text;
 
 	// get data
@@ -300,6 +348,19 @@ bool MyProcControl_Lite::SecondaryConsentDialog::doCopy() {
 	return true;
 }
 
+void MyProcControl_Lite::SecondaryConsentDialog::setup_event_handlers() {
+	WINDOW_add_handler(WM_NCHITTEST, [this](EventData& ev) {
+		ev.returnValue(HTCAPTION);
+	});
+	WINDOW_add_handler(WM_CLOSE, [this](EventData& ev) {
+		notExited = false;
+	});
+	WINDOW_add_handler(WM_PAINT, onPaint);
+	WINDOW_add_handler(WM_SETFOCUS, onFocus);
+	WINDOW_add_handler(WM_WTSSESSION_CHANGE, onSessionChange);
+	WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION);
+}
+
 
 static int _RunConsentUI_Secondary(
 	std::wstring name, std::wstring signature, const std::array<std::string, 16>& u8extras
@@ -312,15 +373,32 @@ static int _RunConsentUI_Secondary(
 		return ERROR_ACCESS_DENIED;
 	EnableAllPrivileges(NULL);
 	std::thread([&] {
-		auto hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+		atomic<HDESK> hDesk = OpenInputDesktop(0, FALSE, GENERIC_ALL);
 		if (hDesk) {
 			SetThreadDesktop(hDesk);
-			CloseDesktop(hDesk);
+			std::thread([&hDesk] {
+				while (1) {
+					HDESK dsk2 = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+					WCHAR name1[256]{}, name2[256]{};
+					DWORD nLen = 0;
+					if (!hDesk || !dsk2) return;
+					GetUserObjectInformationW(hDesk,
+						UOI_NAME, name1, sizeof(name1), &nLen);
+					GetUserObjectInformationW(dsk2,
+						UOI_NAME, name2, sizeof(name2), &nLen);
+					CloseDesktop(dsk2);
+					if (wstring(name1) != name2 && name1[0] && name2[0]) {
+						ExitProcess(ERROR_BUSY);
+					}
+					SleepEx(1000, TRUE);
+				}
+			}).detach();
 		}
 		int ttl = 10;
 		try { ttl = stoi(u8extras[5]); }
 		catch (...) {}
 		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
+		RegClass_BackgroundLayeredAlphaWindowClass();
 		MyProcControl_Lite::SecondaryConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
 			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
 		cdlg.create();
@@ -335,6 +413,11 @@ static int _RunConsentUI_Secondary(
 		if (hWaiter) CloseHandle(hWaiter);
 		cdlg.show();
 		cdlg.run(&cdlg);
+		if (hDesk) {
+			HDESK myDesk = hDesk;
+			hDesk = NULL;
+			if (myDesk) CloseDesktop(myDesk);
+		}
 
 		int result = cdlg.result();
 		ExitProcess(result | (cdlg.remember() ? 0x20000000 : 0));
@@ -424,6 +507,38 @@ int MyProcControl_Lite::RunConsentUI(
 	if (action == L"secondary") return _RunConsentUI_Secondary(name, signature, u8extras);
 	if (action == L"sc-control") return _RunConsentUI_ScControl(name, signature, u8extras);
 	return 87;
+}
+
+
+static bool IsWorkStationLocked(DWORD dwSessionId) {
+	if ((DWORD)-1 == dwSessionId) ProcessIdToSessionId(GetCurrentProcessId(), &dwSessionId);
+
+	PWTSINFOEXW pWtsInfoEx = nullptr;
+	LPWSTR pBuffer = nullptr;
+	DWORD dwBytesReturned = 0;
+
+	BOOL ok = WTSQuerySessionInformationW(
+		WTS_CURRENT_SERVER_HANDLE,
+		dwSessionId,
+		WTSSessionInfoEx,
+		&pBuffer,
+		&dwBytesReturned
+	);
+	if (!ok) return true;
+
+	pWtsInfoEx = (PWTSINFOEXW)pBuffer;
+	LONG flags = pWtsInfoEx->Data.WTSInfoExLevel1.SessionFlags;
+
+	WTSFreeMemory(pBuffer);
+
+	static BOOL isWin7Or2008R2 = IsWindows7OrGreater() && (!IsWindows8OrGreater());
+
+	int r = -1;
+	if (flags == WTS_SESSIONSTATE_LOCK) r = 1;
+	else if (flags == WTS_SESSIONSTATE_UNLOCK) r = 0;
+	if (r == -1) return true;
+	if (isWin7Or2008R2) r = (r == 1 ? 0 : 1);
+	return r;
 }
 
 

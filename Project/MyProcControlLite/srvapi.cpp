@@ -372,7 +372,7 @@ bool MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(
 	DWORD client_pid, DWORD dwSessionId,
 	std::wstring app, std::wstring req, std::wstring detailsText,
 	std::wstring allowBtn, std::wstring denyBtn, bool* remember,
-	int timeout, bool showSplitMenu
+	int timeout, bool showSplitMenu, size_t _MaxRetries
 ) {
 	DWORD prevErr = GetLastError();
 	auto _gg = AcquireSessionConsentUILock(dwSessionId);
@@ -387,18 +387,24 @@ bool MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(
 	} while (0);
 	auto appPath = make_shared<WCHAR[]>(32768);
 	if (!GetModuleFileNameW(NULL, appPath.get(), 32768)) return false;
+	size_t nRetries = 0;
+	STARTUPINFOW si{}; PROCESS_INFORMATION pi{};
+pstart:
+	wstring t = detailsText;
 	wstring randomNonce = GenerateUUIDW();
-	w32oop::util::str::operations::replace(detailsText, L"\n", randomNonce);
-	wstring sig = MyProcControl_Lite::ServiceCore::calculate_consent_sig(detailsText);
-	w32oop::util::str::operations::replace(detailsText, L"\\", L"\\\\");
+	w32oop::util::str::operations::replace(t, L"\n", randomNonce);
+	wstring sig = MyProcControl_Lite::ServiceCore::calculate_consent_sig(t);
+	w32oop::util::str::operations::replace(t, L"\\", L"\\\\");
 	wstring cmd = std::format(L"consent.exe --type=consent --action=secondary --name=\"{}\" "
 		L"--extra1=\"{}\" --extra2=\"{}\" --extra3=\"{}\" --extra4=\"{}\" "
 		L"--extra5={} --extra6={} --extra7=1883 --extra8=\"{}\" --extra9={} --extra10={} --signature={}",
 		ServiceCoreProcess::Instance->getName(), app, req, allowBtn, denyBtn, remember ? L"y" : L"n",
-		timeout, w32oop::util::str::operations::replace(detailsText, L"\"", L"\\\""), randomNonce,
+		timeout, w32oop::util::str::operations::replace(t, L"\"", L"\\\""), randomNonce,
 		showSplitMenu ? L"y" : L"n", sig
 	); // TODO: add i18n; allow remember; allow customize timeout
-	STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+	RtlZeroMemory(&si, sizeof(si));
+	RtlZeroMemory(&pi, sizeof(pi));
+	si.cb = sizeof(si);
 	if (!CreateProcessInSession(dwSessionId, appPath.get(), cmd.data(),
 		NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
 		return false;
@@ -413,6 +419,14 @@ bool MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(
 	}
 	GetExitCodeProcess(pi.hProcess, &code);
 	CloseHandle(pi.hProcess);
+	if (code == ERROR_BUSY) {
+		if (++nRetries > _MaxRetries) {
+			SetLastError(prevErr ? prevErr : 0xC0000022);
+			return false;
+		}
+		Sleep(500);
+		goto pstart;
+	}
 
 	bool acc = code & 0x10000000, Myremember = code & 0x20000000, kill = code & 0x00100000, uninstall = code & 0x00200000,
 		blockUntil = code & 0x00400000;

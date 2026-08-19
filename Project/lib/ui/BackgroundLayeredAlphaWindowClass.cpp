@@ -1,4 +1,4 @@
-#include "BackgroundLayeredAlphaWindowClass.h"
+﻿#include "BackgroundLayeredAlphaWindowClass.h"
 
 #define MYWM_SET_TRANSPARENT (WM_USER+WS_EX_TRANSPARENT)
 
@@ -29,15 +29,7 @@ static LRESULT CALLBACK WndProc_BackgroundLayeredAlphaWindowClass(
 		SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE)
 			| WS_EX_LAYERED | WS_EX_TOOLWINDOW & ~WS_EX_APPWINDOW);
 		SetLayeredWindowAttributes(hWnd, 0, 127, LWA_ALPHA);
-		RECT rc{ 0 };
-		HWND hParent = GetParent(hWnd);
-		if (hParent) GetWindowRect(hParent, &rc);
-		else {
-			rc.right = GetSystemMetrics(SM_CXSCREEN);
-			rc.bottom = GetSystemMetrics(SM_CYSCREEN);
-		}
-		SetWindowPos(hWnd, HWND_TOPMOST, 0, 0,
-			rc.right - rc.left, rc.bottom - rc.top, 0);
+		PostMessage(hWnd, WM_SIZE, 0, 0);
 
 		EnableMenuItem(GetSystemMenu(hWnd, FALSE), SC_CLOSE, MF_DISABLED | MF_GRAYED);
 		RemoveMenu(GetSystemMenu(hWnd, FALSE), 1, MF_BYPOSITION);
@@ -66,16 +58,7 @@ static LRESULT CALLBACK WndProc_BackgroundLayeredAlphaWindowClass(
 			SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
 			break;
 		case 8: {
-			RECT rc{ 0 };
-			HWND hParent = GetParent(hWnd);
-			if (hParent) GetWindowRect(hParent, &rc);
-			else {
-				rc.right = GetSystemMetrics(SM_CXSCREEN);
-				rc.bottom = GetSystemMetrics(SM_CYSCREEN);
-			}
-			SetWindowPos(hWnd, HWND_TOPMOST, 0, 0,
-				rc.right - rc.left, rc.bottom - rc.top,
-				SWP_NOACTIVATE | SWP_NOZORDER);
+			PostMessage(hWnd, WM_SIZE, 0, 0);
 		}
 			break;
 		default:
@@ -88,15 +71,15 @@ static LRESULT CALLBACK WndProc_BackgroundLayeredAlphaWindowClass(
 	case WM_MOVING:
 	case WM_SIZING:
 	{
-		RECT rc{ 0 };
+		RECT rc{};
 		HWND hParent = GetParent(hWnd);
 		if (hParent) GetWindowRect(hParent, &rc);
 		else {
 			rc.right = GetSystemMetrics(SM_CXSCREEN);
 			rc.bottom = GetSystemMetrics(SM_CYSCREEN);
 		}
-		SetWindowPos(hWnd, HWND_TOPMOST, 0, 0,
-			rc.right - rc.left, rc.bottom - rc.top, 0);
+		SetWindowPos(hWnd, HWND_TOPMOST, rc.left, rc.top,
+			rc.right - rc.left, rc.bottom - rc.top, SWP_NOACTIVATE);
 		break;
 	}
 
