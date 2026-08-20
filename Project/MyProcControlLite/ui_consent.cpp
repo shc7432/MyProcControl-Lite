@@ -12,7 +12,7 @@ static bool IsWorkStationLocked(DWORD dwSessionId = (DWORD)-1);
 MyProcControl_Lite::SecondaryConsentDialog::SecondaryConsentDialog(
 	wstring app_name, wstring operation_name, wstring details,
 	wstring allow_button_text, wstring deny_button_text,
-	bool allow_remember, bool allow_extra, int times
+	bool allow_remember, bool allow_extra, DWORD times
 ) : Window(L"Consent Dialog", 480, 320, 0, 0, WS_POPUP | WS_BORDER | WS_SYSMENU)
 {
 	m_constructor_data__app_name = app_name;
@@ -185,7 +185,10 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	// -------
 
 	timer_thread = thread([this] {
-		int times = timesLeft;
+		if (timesLeft == (DWORD)-1) {
+			return;
+		}
+		LONG64 times = (LONG64)timesLeft;
 		if (!times) return;
 		wstring origText = deny_button.text();
 		while (notExited) {
@@ -412,8 +415,8 @@ static int _RunConsentUI_Secondary(
 				}
 			}).detach();
 		}
-		int ttl = 10;
-		try { ttl = stoi(u8extras[5]); }
+		DWORD ttl = 10;
+		try { ttl = stoul(u8extras[5]); }
 		catch (...) {}
 		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
 		RegClass_BackgroundLayeredAlphaWindowClass();
@@ -573,8 +576,7 @@ HWND MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::new_
 	);
 }
 
-void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::setup_event_handlers() {
-}
+void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::setup_event_handlers() {}
 
 void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::onCreated() {
 	// window: 240*150
@@ -636,9 +638,17 @@ void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::onCr
 			if (hToken) CloseHandle(hToken);
 			return;
 		}
+		TOKEN_LINKED_TOKEN linkedToken{};
+		DWORD retLen = 0;
+		if (GetTokenInformation(hToken, TokenLinkedToken, &linkedToken, sizeof(linkedToken), &retLen)) {
+			HANDLE NeedClose = hToken;
+			hToken = linkedToken.LinkedToken;
+			CloseHandle(NeedClose);
+		}
 		if (allowAdmin) do {
 			bool isAdmin = app::IsTokenAdministrators(hToken);
 			if (isAdmin) break;
+			CloseHandle(hToken);
 			MessageBoxTimeoutW(hwnd, L"You don't have the permission to complete this operation.", NULL, MB_ICONERROR, 0, 5000);
 			return;
 		} while (0);

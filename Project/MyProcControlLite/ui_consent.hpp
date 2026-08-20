@@ -53,7 +53,7 @@ public:
 	SecondaryConsentDialog(
 		wstring app_name, wstring operation_name, wstring details,
 		wstring allow_button_text, wstring deny_button_text,
-		bool allow_remember, bool allow_extra, int times = 10
+		bool allow_remember, bool allow_extra, DWORD times = 10
 	);
 	virtual ~SecondaryConsentDialog();
 
@@ -87,7 +87,7 @@ private:
 
 	bool notExited = true;
 
-	int timesLeft;
+	DWORD timesLeft;
 	thread timer_thread;
 public:
 	int result() const {

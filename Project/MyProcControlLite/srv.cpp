@@ -603,10 +603,16 @@ void ServiceCoreProcess::LoadConfig() {
 		hServiceState = hServiceKey.create(L"State");
 	}
 	hServiceState.validate();
-	auto Parameters = hServiceKey.create(L"Parameters");
+	auto _Parameters = hServiceKey.create(L"Parameters");
 
-	DWORD FailOpen = Parameters.get_value_or<DWORD>(L"FailOpen", 0);
-	this->_FailOpen = FailOpen;
+#define MakeParam(Type, Name) Type Name = _Parameters.get_value_or<Type>(L ## #Name, (Type)this->Parameters.Name); \
+	this->Parameters.Name = Name;
+	MakeParam(DWORD, FailOpen);
+	MakeParam(DWORD, ConsentTimeout);
+#undef MakeParam
+
+	// verify and fix config
+	if (!Parameters.ConsentTimeout) Parameters.ConsentTimeout = 30;
 }
 
 
@@ -762,7 +768,7 @@ bool ServiceCoreProcess::RequestChangeProtection(
 		if (!MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(client, session, whatApp, 
 			L"Change Protection State", format(L"Process: ({}) {}\nProcess file: {}\nNew protection state: {}ABLE\nIf you "
 			L"want to continue, we will bring you to a secure desktop.", client, whatApp, whereApp, fEnable ? L"EN" : L"DIS"), 
-			L"Continue", L"Block", NULL, 30, TRUE)) {
+			L"Continue", L"Block", NULL, GetDefaultConsentTimeout(), TRUE)) {
 			*error = GetLastError();
 			return false;
 		}
@@ -774,9 +780,7 @@ bool ServiceCoreProcess::RequestChangeProtection(
 		wstring optype = fEnable ? L"resumectl" : L"pausectl";
 		wstring sig = MyProcControl_Lite::ServiceCore::calculate_consent_sig(optype);
 		wstring cmd = std::format(L"consent.exe --type=consent --action=sc-control --name=\"{}\" "
-			L"--extra1=v1 --extra2=\"{}\" --signature={}",
-			ServiceCoreProcess::Instance->getName(), optype, sig
-		);
+			L"--extra1=v1 --extra2=\"{}\" --signature={}", getName(), optype, sig);
 		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
 		if (!CreateProcessInSession(session, appPath.get(), cmd.data(),
 			NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {
@@ -786,7 +790,7 @@ bool ServiceCoreProcess::RequestChangeProtection(
 		ResumeThread(pi.hThread);
 		CloseHandle(pi.hThread);
 		if (WAIT_OBJECT_0 != WaitForMultipleObjects(2, (array<decltype(pi.hProcess), 2>{
-			pi.hProcess, ServiceCoreProcess::Instance->getStopEvent()
+			pi.hProcess, getStopEvent()
 		}).data(), 0, 35000)) {
 			TerminateProcess(pi.hProcess, 0);
 		}

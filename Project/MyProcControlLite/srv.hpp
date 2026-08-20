@@ -119,7 +119,11 @@ protected:
 	w32EventHandle hStop;
 
 	bool _ProtectionDisabled = false;
-	bool _FailOpen = false;
+
+	struct {
+		bool FailOpen = false;
+		DWORD ConsentTimeout = 30;
+	} Parameters;
 
 public:
 	const std::wstring& getName() const { return name; }
@@ -128,6 +132,7 @@ public:
 	bool RequestChangeProtection(
 		DWORD client, DWORD session, std::wstring whatApp, std::wstring whereApp, bool fEnable, unsigned long* error
 	);
-	bool IsFailOpen() const { return _FailOpen; }
+	bool IsFailOpen() const { return Parameters.FailOpen; }
+	DWORD GetDefaultConsentTimeout() const { return Parameters.ConsentTimeout; }
 };
 

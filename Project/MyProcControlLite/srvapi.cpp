@@ -401,7 +401,7 @@ pstart:
 		ServiceCoreProcess::Instance->getName(), app, req, allowBtn, denyBtn, remember ? L"y" : L"n",
 		timeout, w32oop::util::str::operations::replace(t, L"\"", L"\\\""), randomNonce,
 		showSplitMenu ? L"y" : L"n", sig
-	); // TODO: add i18n; allow remember; allow customize timeout
+	); // TODO: add i18n; allow remember
 	RtlZeroMemory(&si, sizeof(si));
 	RtlZeroMemory(&pi, sizeof(pi));
 	si.cb = sizeof(si);
@@ -538,7 +538,7 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		);
 		SetLastError(0xC0000022);
 		bool acc = _XxxxInternalPopSecondaryConsentDialog(client_pid, dwSessionId, callerName, L"LaunchWithControl",
-			detailedDetails, L"Allow", L"Deny", NULL, 30, true);
+			detailedDetails, L"Allow", L"Deny", NULL, ServiceCoreProcess::Instance->GetDefaultConsentTimeout(), true);
 		if (!acc) {
 			*bSuccess = 0;
 			*error = GetLastError();
@@ -769,7 +769,7 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 	);
 	SetLastError(ERROR_ACCESS_DENIED);
 	bool acc = _XxxxInternalPopSecondaryConsentDialog(client_pid, dwSessionId, callerName, type_s,
-		detailedDetails, L"Allow", L"Deny", NULL, 30, true);
+		detailedDetails, L"Allow", L"Deny", NULL, ServiceCoreProcess::Instance->GetDefaultConsentTimeout(), true);
 	if (acc) {
 		return 1;
 	}
