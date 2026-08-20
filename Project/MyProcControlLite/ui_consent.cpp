@@ -51,9 +51,9 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	add_style_ex(WS_EX_TOOLWINDOW);
 
 	hLocker = CreateWindowExW(0, BackgroundLayeredAlphaWindowClassNameW, L"", WS_POPUP, 0, 0, 1, 1, hwnd, 0, 0, 0);
-	m_lockerText.set_parent(hLocker);
-	m_lockerText.create(L"\r\n\r\nUnlock the workstation\r\nto process the\r\nconsent request.",
-		240, 120, 0, 0, WS_POPUP | WS_BORDER | SS_CENTER);
+	m_lockerText = UIService::internal::SecondaryConsentDialogLocker::SecondaryConsentDialogLocker(hLocker);
+	m_lockerText.associate(*this);
+	m_lockerText.create();
 
 	if (IsWorkStationLocked()) setLocked(true);
 
@@ -238,7 +238,6 @@ void MyProcControl_Lite::SecondaryConsentDialog::onPaint(EventData& ev) {
 
 void MyProcControl_Lite::SecondaryConsentDialog::onFocus(EventData& ev) {
 	set_topmost(true);
-	if (IsWorkStationLocked()) setLocked(true);
 }
 
 void MyProcControl_Lite::SecondaryConsentDialog::onSessionChange(EventData& ev) {
@@ -247,6 +246,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::onSessionChange(EventData& ev) 
 	}
 	if (ev.wParam == WTS_SESSION_UNLOCK) {
 		setLocked(false);
+		show();
 	}
 }
 
@@ -353,11 +353,25 @@ void MyProcControl_Lite::SecondaryConsentDialog::setup_event_handlers() {
 		ev.returnValue(HTCAPTION);
 	});
 	WINDOW_add_handler(WM_CLOSE, [this](EventData& ev) {
+		if (isLocked) {
+			ev.preventDefault();
+			return;
+		}
 		notExited = false;
 	});
 	WINDOW_add_handler(WM_PAINT, onPaint);
 	WINDOW_add_handler(WM_SETFOCUS, onFocus);
 	WINDOW_add_handler(WM_WTSSESSION_CHANGE, onSessionChange);
+	WINDOW_add_handler(WM_USER + 0x109, [this](EventData& ev) {
+		ev.preventDefault();
+		hide();
+		ShowWindow(hLocker, SW_HIDE);
+	});
+	WINDOW_add_handler(WM_USER + 0x111, [this](EventData& ev) {
+		ev.preventDefault();
+		// set unlocked state
+		setLocked(!ev.wParam);
+	});
 	WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION);
 }
 
@@ -512,6 +526,7 @@ int MyProcControl_Lite::RunConsentUI(
 
 static bool IsWorkStationLocked(DWORD dwSessionId) {
 	if ((DWORD)-1 == dwSessionId) ProcessIdToSessionId(GetCurrentProcessId(), &dwSessionId);
+	if (dwSessionId == 0) return true;
 
 	PWTSINFOEXW pWtsInfoEx = nullptr;
 	LPWSTR pBuffer = nullptr;
@@ -540,5 +555,98 @@ static bool IsWorkStationLocked(DWORD dwSessionId) {
 	if (isWin7Or2008R2) r = (r == 1 ? 0 : 1);
 	return r;
 }
+
+
+HWND MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::new_window() {
+	return CreateWindowExW(
+		setup_info->styleEx,
+		get_class_name().c_str(),
+		setup_info->title.c_str(),
+		setup_info->style,
+		scaled(setup_info->x), scaled(setup_info->y),
+		scaled(setup_info->width), scaled(setup_info->height),
+		myParent, setup_info->hMenu, GetModuleHandleW(NULL), this
+	);
+}
+
+void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::setup_event_handlers() {
+}
+
+void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::onCreated() {
+	// window: 240*150
+	myText.set_parent(this);
+	myText.create(L"Unlock the workstation\r\nor logon to process\r\nthe consent request.", 240, 70, 0, 30, Static::STYLE | SS_CENTER);
+	logon.set_parent(this);
+	logon.create(L"&Logon", 120, 30, 10, 110);
+	dismiss.set_parent(this);
+	dismiss.create(L"&Dismiss", 90, 30, 140, 110);
+
+	logon.onClick([this](EventData&) {
+		DWORD sess{};ProcessIdToSessionId(GetCurrentProcessId(), &sess);
+		PWSTR pWtsUserName{}, pWtsDomainName{}; DWORD dwSize{};
+		if (!(WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, sess,
+			WTSUserName, &pWtsUserName, &dwSize) && 
+			WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, sess,
+				WTSDomainName, &pWtsDomainName, &dwSize))) {
+			logon.disable();
+			return;
+		}
+		disable();
+		w32oop::util::RAIIHelper _([this] {enable();});
+		wstring user = pWtsUserName, domain = pWtsDomainName;
+		WTSFreeMemory(pWtsUserName);
+		WTSFreeMemory(pWtsDomainName);
+		bool allowAdmin = false;
+		if (user.empty()) {
+			allowAdmin = true;
+			optional<wstring> t;
+			InputDialog idd(L"Logon User: Enter Username", 600);
+			idd.create();
+			idd.setButtonsText(L"Continue", L"Cancel");
+			wstring prompt = L"The user specified should be an administrator.";
+			t = idd.getInput<wstring>(prompt, user);
+			if (!t.has_value()) return;
+			user = t.value();
+			idd = InputDialog(L"Logon User: Enter Domain", 600);
+			idd.create();
+			idd.setButtonsText(L"Continue", L"Cancel");
+			if (domain.empty() || domain == L"NT AUTHORITY") {
+				WCHAR b[256]{};
+				GetEnvironmentVariableW(L"COMPUTERNAME", b, 256);
+				domain = b;
+			}
+			t = idd.getInput<wstring>(L"Please enter the domain of: " + user, domain);
+			if (!t.has_value()) return;
+			domain = t.value();
+		}
+		InputDialog idd(L"Logon User: Enter Password", 600);
+		idd.setPasswordMode();
+		idd.create();
+		idd.setButtonsText(L"Logon", L"Cancel");
+		auto p = idd.getInput<wstring>(L"Enter password for " + domain + L"\\" + user);
+		if (!p.has_value()) return;
+		HANDLE hToken{};
+		auto r = LogonUserW(user.c_str(), domain.c_str(), p.value().c_str(), LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken);
+		if (!r || !hToken) {
+			MessageBoxTimeoutW(hwnd, ErrorChecker().message().c_str(), NULL, MB_ICONERROR, 0, 5000);
+			if (hToken) CloseHandle(hToken);
+			return;
+		}
+		if (allowAdmin) do {
+			bool isAdmin = app::IsTokenAdministrators(hToken);
+			if (isAdmin) break;
+			MessageBoxTimeoutW(hwnd, L"You don't have the permission to complete this operation.", NULL, MB_ICONERROR, 0, 5000);
+			return;
+		} while (0);
+		CloseHandle(hToken);
+		if (associated) PostMessageW(associated, WM_USER + 0x111, 1, 0);
+	});
+
+	dismiss.onClick([this](EventData&) {
+		if (associated) PostMessageW(associated, WM_USER + 0x109, 0, 0);
+		hide();
+	});
+}
+
 
 

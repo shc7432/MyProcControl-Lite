@@ -7,11 +7,24 @@ using namespace std;
 namespace MyProcControl_Lite {
 
 namespace UIService::internal {
-	class MyStatic :public Static {
+	class SecondaryConsentDialogLocker : public Window {
 	public:
-		MyStatic() : Static() {
-			ctlid = NULL;
+		SecondaryConsentDialogLocker() : Window(), myParent(NULL) {}
+		SecondaryConsentDialogLocker(HWND parent) : Window(L"Lockdown", 240, 150, 0, 0, WS_POPUP | WS_BORDER), myParent(parent) {}
+
+		void associate(HWND hwnd) { associated = hwnd; }
+
+	protected:
+		COLORREF get_window_background_color() override {
+			return RGB(0xF0, 0xF0, 0xF0);
 		}
+		HWND associated{};
+		Static myText;
+		Button logon, dismiss;
+		HWND myParent;
+		HWND new_window() override;
+		void onCreated() override;
+		void setup_event_handlers() override;
 	};
 }
 
@@ -29,7 +42,7 @@ private:
 private:
 	w32EventHandle hCloseEvent;
 	HWND hLocker;
-	UIService::internal::MyStatic m_lockerText;
+	UIService::internal::SecondaryConsentDialogLocker m_lockerText;
 	HBRUSH m_hWhiteBrush = nullptr;
 	HFONT m_hTitleFont = nullptr;
 	HPEN m_hLinePen = nullptr;
@@ -45,7 +58,7 @@ public:
 	virtual ~SecondaryConsentDialog();
 
 protected:
-	virtual const COLORREF get_window_background_color() const {
+	COLORREF get_window_background_color() override {
 		return RGB(0xF0, 0xF0, 0xF0);
 	}
 

@@ -10,7 +10,7 @@ class TrayIconWindow : public Window
 {
 public:
 	TrayIconWindow(wstring svc) : Window(svc, 1, 1), svc(svc) {};
-	const HICON get_window_icon() const override {
+	HICON get_window_icon() override {
 		return myicon();
 	}
 

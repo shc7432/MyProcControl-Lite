@@ -531,7 +531,7 @@ BOOL WINAPI HookedCreateProcessWithLogonW(
 	unsigned long sisize = lpStartupInfo ? (lpStartupInfo->cb) : 0;
 	wstring user = lpUsername ? lpUsername : L"";
 	wstring domain = lpDomain ? lpDomain : L"";
-	wstring pass = lpPassword ? lpPassword : L"";
+	wstring pass = L"******";
 
 	if (!myaskconsent(3, app.c_str(), cmd.c_str(), 0, dwCreationFlags,
 		cd.c_str(), sisize, 0, dwLogonFlags,

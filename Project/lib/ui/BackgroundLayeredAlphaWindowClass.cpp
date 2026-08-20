@@ -36,6 +36,8 @@ static LRESULT CALLBACK WndProc_BackgroundLayeredAlphaWindowClass(
 
 		SetTimer(hWnd, 6, 60000, NULL);
 		SetTimer(hWnd, 8, 1000, NULL);
+
+		SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 1, 1, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	}
 				  break;
 
@@ -79,7 +81,7 @@ static LRESULT CALLBACK WndProc_BackgroundLayeredAlphaWindowClass(
 			rc.bottom = GetSystemMetrics(SM_CYSCREEN);
 		}
 		SetWindowPos(hWnd, HWND_TOPMOST, rc.left, rc.top,
-			rc.right - rc.left, rc.bottom - rc.top, SWP_NOACTIVATE);
+			rc.right - rc.left, rc.bottom - rc.top, SWP_NOACTIVATE | SWP_NOZORDER);
 		break;
 	}
 
