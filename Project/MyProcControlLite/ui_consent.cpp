@@ -646,6 +646,12 @@ void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::onCr
 			CloseHandle(NeedClose);
 		}
 		if (allowAdmin) do {
+			HANDLE hToken2{};
+			if (DuplicateTokenEx(hToken, TOKEN_QUERY | TOKEN_IMPERSONATE, NULL, SecurityImpersonation, TokenImpersonation, &hToken2)) {
+				HANDLE NeedClose = hToken;
+				hToken = hToken2;
+				CloseHandle(NeedClose);
+			}
 			bool isAdmin = app::IsTokenAdministrators(hToken);
 			if (isAdmin) break;
 			CloseHandle(hToken);

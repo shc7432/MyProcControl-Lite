@@ -414,7 +414,7 @@ pstart:
 	CloseHandle(pi.hThread);
 	if (WAIT_OBJECT_0 != WaitForMultipleObjects(2, (array<decltype(pi.hProcess), 2>{
 		pi.hProcess, ServiceCoreProcess::Instance->getStopEvent()
-	}).data(), 0, 35000)) {
+	}).data(), 0, ServiceCoreProcess::Instance->ConsentCalculateMaximiumWait())) {
 		TerminateProcess(pi.hProcess, 0);
 	}
 	GetExitCodeProcess(pi.hProcess, &code);

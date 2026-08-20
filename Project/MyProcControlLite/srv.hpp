@@ -134,5 +134,10 @@ public:
 	);
 	bool IsFailOpen() const { return Parameters.FailOpen; }
 	DWORD GetDefaultConsentTimeout() const { return Parameters.ConsentTimeout; }
+	DWORD ConsentCalculateMaximiumWait() const {
+		ULONG64 v = static_cast<ULONG64>(GetDefaultConsentTimeout()) * 1000 + 5000;
+		if (v > MAXDWORD) return MAXDWORD;
+		return (DWORD)v;
+	}
 };
 
