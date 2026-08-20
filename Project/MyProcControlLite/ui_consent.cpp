@@ -176,6 +176,10 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 
 	SetWindowPos(hwnd, nullptr, (x), (y), 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
+	// 手动定位locker窗口
+	SendMessageW(hLocker, WM_SIZE, 0, 0);
+	m_lockerText.center(hLocker);
+
 	set_topmost(true);
 
 	// -------
