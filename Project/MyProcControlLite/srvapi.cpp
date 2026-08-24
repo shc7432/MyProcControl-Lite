@@ -372,7 +372,7 @@ bool MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(
 	DWORD client_pid, DWORD dwSessionId,
 	std::wstring app, std::wstring req, std::wstring detailsText,
 	std::wstring allowBtn, std::wstring denyBtn, bool* remember,
-	int timeout, bool showSplitMenu, size_t _MaxRetries
+	DWORD timeout, bool showSplitMenu, size_t _MaxRetries
 ) {
 	DWORD prevErr = GetLastError();
 	auto _gg = AcquireSessionConsentUILock(dwSessionId);

@@ -4,6 +4,7 @@
 #include <WtsApi32.h>
 #include <VersionHelpers.h>
 #include "../lib/ui/BackgroundLayeredAlphaWindowClass.h"
+#pragma comment(lib, "imm32.lib")
 using namespace std;
 using namespace w32oop::util::str::encodings;
 
@@ -415,6 +416,7 @@ static int _RunConsentUI_Secondary(
 				}
 			}).detach();
 		}
+		ImmDisableIME(0);
 		DWORD ttl = 10;
 		try { ttl = stoul(u8extras[5]); }
 		catch (...) {}
@@ -464,13 +466,44 @@ static int _RunConsentUI_ScControl(
 		auto hDesk = OpenDesktopW(L"Winlogon", 0, FALSE, GENERIC_ALL);
 		if (hDesk) {
 			if (SetThreadDesktop(hDesk)) SwitchDesktop(hDesk);
-			CloseDesktop(hDesk);
+			//CloseDesktop(hDesk);
 		}
+		if (!hDesk) ExitProcess(1);
+		ImmDisableIME(0);
 
 		std::thread([hInput] {
 			Sleep(30000);
 			SwitchDesktop(hInput);
 			ExitProcess(1);
+		}).detach();
+
+		std::thread([hDesk] {
+			SetThreadDesktop(hDesk);
+			if (IsWorkStationLocked()) ExitProcess(1);
+			class KillerKillOnLockWorkstation : public Window {
+			public:
+				KillerKillOnLockWorkstation() :Window(L"", 1, 1, -2, -2, WS_POPUP) {}
+			protected:
+				void setup_event_handlers() override {
+					WINDOW_add_handler(WM_WTSSESSION_CHANGE, [this](EventData& ev) {
+						ev.preventDefault();
+						if (ev.wParam == WTS_SESSION_LOCK) {
+							ExitProcess(1);
+						}
+					});
+				}
+				void onCreated() override {
+					WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION);
+				}
+				void onDestroy() override {
+					WTSUnRegisterSessionNotification(hwnd);
+				}
+			};
+			KillerKillOnLockWorkstation k;
+			k.create();
+			k.show();
+			k.set_main_window();
+			k.run();
 		}).detach();
 
 		int user = 0;
@@ -517,6 +550,7 @@ static int _RunConsentUI_ScControl(
 
 		SwitchDesktop(hInput);
 		CloseDesktop(hInput);
+		CloseDesktop(hDesk);
 		ExitProcess(user);
 	}).join();
 	return 1;

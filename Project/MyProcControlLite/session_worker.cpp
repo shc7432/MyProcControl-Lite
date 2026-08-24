@@ -63,7 +63,7 @@ int SessionWorker(std::wstring name, DWORD ppid) {
 		GetExitCodeProcess(pi.hProcess, &code);
 		if (code == ERROR_SHUTDOWN_IN_PROGRESS) Sleep(10000);
 		++nFailure;
-		if (nFailure % 5 == 0) Sleep(5000);
+		//if (nFailure % 5 == 0) Sleep(5000);
 	}
 
 	DestroyEnvironmentBlock(pEnv);

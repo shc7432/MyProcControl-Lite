@@ -3,11 +3,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>../bin</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>--type=consent-test</LocalDebuggerCommandArguments>
-    <LocalDebuggerCommandArgumentsHistory>--type=tray-icon --name="MyProcControl-Lite" |--type=consent-test|</LocalDebuggerCommandArgumentsHistory>
+    <LocalDebuggerCommandArguments>--type=tray-icon --name="MyProcControl-Lite"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArgumentsHistory>--type=tray-icon --name="MyProcControl-Lite" |--type=consent-test|--type=tray-icon --name="MyProcControl-Lite" --ppid=168|--type=tray-icon --name="MyProcControl-Lite"|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>--type=consent-test</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--type=tray-icon --name="MyProcControl-Lite"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommandArgumentsHistory>--type=consent-test|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
