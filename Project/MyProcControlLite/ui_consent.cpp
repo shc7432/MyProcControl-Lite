@@ -13,7 +13,7 @@ static bool IsWorkStationLocked(DWORD dwSessionId = (DWORD)-1);
 MyProcControl_Lite::SecondaryConsentDialog::SecondaryConsentDialog(
 	wstring app_name, wstring operation_name, wstring details,
 	wstring allow_button_text, wstring deny_button_text,
-	bool allow_remember, bool allow_extra, DWORD times
+	bool allow_remember, bool allow_extra, bool isPrivReq, DWORD times
 ) : Window(L"Consent Dialog", 480, 320, 0, 0, WS_POPUP | WS_BORDER | WS_SYSMENU)
 {
 	m_constructor_data__app_name = app_name;
@@ -37,6 +37,7 @@ MyProcControl_Lite::SecondaryConsentDialog::SecondaryConsentDialog(
 
 	timesLeft = times;
 	hLocker = 0;
+	isPrivilegeRequired = isPrivReq;
 }
 
 MyProcControl_Lite::SecondaryConsentDialog::~SecondaryConsentDialog() {
@@ -51,12 +52,40 @@ MyProcControl_Lite::SecondaryConsentDialog::~SecondaryConsentDialog() {
 void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	add_style_ex(WS_EX_TOOLWINDOW);
 
+	// test if the current user is admin
+	if (isPrivilegeRequired) do {
+		HANDLE hToken{};
+		DWORD dwSessionId{}; ProcessIdToSessionId(GetCurrentProcessId(), &dwSessionId);
+		WTSQueryUserToken(dwSessionId, &hToken);
+		if (!hToken) break;
+		TOKEN_LINKED_TOKEN linkedToken{};
+		DWORD retLen = 0;
+		if (GetTokenInformation(hToken, TokenLinkedToken, &linkedToken, sizeof(linkedToken), &retLen)) {
+			HANDLE NeedClose = hToken;
+			hToken = linkedToken.LinkedToken;
+			CloseHandle(NeedClose);
+		}
+		HANDLE hToken2{};
+		if (DuplicateTokenEx(hToken, TOKEN_QUERY | TOKEN_IMPERSONATE, NULL, SecurityImpersonation, TokenImpersonation, &hToken2)) {
+			HANDLE NeedClose = hToken;
+			hToken = hToken2;
+			CloseHandle(NeedClose);
+		}
+		bool isAdmin = app::IsTokenAdministrators(hToken);
+		if (isAdmin) {
+			isPrivilegeRequired = false; // the current user is already admin. just give standard protection
+		}
+		CloseHandle(hToken);
+	} while (0);
+
 	hLocker = CreateWindowExW(0, BackgroundLayeredAlphaWindowClassNameW, L"", WS_POPUP, 0, 0, 1, 1, hwnd, 0, 0, 0);
+	EnableWindow(hLocker, false);
 	m_lockerText = UIService::internal::SecondaryConsentDialogLocker::SecondaryConsentDialogLocker(hLocker);
+	m_lockerText.setType(isPrivilegeRequired);
 	m_lockerText.associate(*this);
 	m_lockerText.create();
 
-	if (IsWorkStationLocked()) setLocked(true);
+	setLocked(IsWorkStationLocked());
 
 	// 创建标题字体
 	m_hTitleFont = CreateFontW(
@@ -259,6 +288,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::onSessionChange(EventData& ev) 
 }
 
 void MyProcControl_Lite::SecondaryConsentDialog::setLocked(bool bLocked) {
+	if (isPrivilegeRequired) bLocked = true;
 	isLocked = bLocked;
 	enable(!isLocked);
 	ShowWindow(hLocker, isLocked ? SW_SHOW : SW_HIDE);
@@ -378,6 +408,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::setup_event_handlers() {
 	WINDOW_add_handler(WM_USER + 0x111, [this](EventData& ev) {
 		ev.preventDefault();
 		// set unlocked state
+		if (ev.wParam) isPrivilegeRequired = isLocked = false;
 		setLocked(!ev.wParam);
 	});
 	WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION);
@@ -423,7 +454,8 @@ static int _RunConsentUI_Secondary(
 		w32oop::util::str::operations::replace(text, nonce, L"\r\n");
 		RegClass_BackgroundLayeredAlphaWindowClass();
 		MyProcControl_Lite::SecondaryConsentDialog cdlg(utf8_utf16(u8extras[0]), utf8_utf16(u8extras[1]), text,
-			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y", ttl);
+			utf8_utf16(u8extras[2]), utf8_utf16(u8extras[3]), u8extras[4] == "y", u8extras[9] == "y",
+			u8extras[10] == "y", ttl);
 		cdlg.create();
 		HANDLE hWaiter = CreateThread(NULL, 0, [](PVOID p)->DWORD {
 			HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, (DWORD)(ULONG_PTR)p);
@@ -615,14 +647,17 @@ void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::setu
 void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::onCreated() {
 	// window: 240*150
 	myText.set_parent(this);
-	myText.create(L"Unlock the workstation\r\nor logon to process\r\nthe consent request.", 240, 70, 0, 30, Static::STYLE | SS_CENTER);
+	myText.create(
+		isPriv ? L"Log on with an administrator\r\naccount to process\r\nthe consent request." :
+		L"Unlock the workstation\r\nor logon to process\r\nthe consent request.",
+		240, 70, 0, 30, Static::STYLE | SS_CENTER);
 	logon.set_parent(this);
 	logon.create(L"&Logon", 120, 30, 10, 110);
 	dismiss.set_parent(this);
 	dismiss.create(L"&Dismiss", 90, 30, 140, 110);
 
 	logon.onClick([this](EventData&) {
-		DWORD sess{};ProcessIdToSessionId(GetCurrentProcessId(), &sess);
+		DWORD sess{}; ProcessIdToSessionId(GetCurrentProcessId(), &sess);
 		PWSTR pWtsUserName{}, pWtsDomainName{}; DWORD dwSize{};
 		if (!(WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, sess,
 			WTSUserName, &pWtsUserName, &dwSize) && 
@@ -637,7 +672,8 @@ void MyProcControl_Lite::UIService::internal::SecondaryConsentDialogLocker::onCr
 		WTSFreeMemory(pWtsUserName);
 		WTSFreeMemory(pWtsDomainName);
 		bool allowAdmin = false;
-		if (user.empty()) {
+		if (isPriv) allowAdmin = true;
+		if (user.empty() || allowAdmin) {
 			allowAdmin = true;
 			optional<wstring> t;
 			InputDialog idd(L"Logon User: Enter Username", 600);

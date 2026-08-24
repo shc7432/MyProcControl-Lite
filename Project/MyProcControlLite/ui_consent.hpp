@@ -11,7 +11,8 @@ namespace UIService::internal {
 	public:
 		SecondaryConsentDialogLocker() : Window(), myParent(NULL) {}
 		SecondaryConsentDialogLocker(HWND parent) : Window(L"Lockdown", 240, 150, 0, 0, WS_POPUP | WS_BORDER), myParent(parent) {}
-
+		
+		void setType(bool bTypeIsPriv) { isPriv = bTypeIsPriv; }
 		void associate(HWND hwnd) { associated = hwnd; }
 
 	protected:
@@ -19,6 +20,7 @@ namespace UIService::internal {
 			return RGB(0xF0, 0xF0, 0xF0);
 		}
 		HWND associated{};
+		bool isPriv{};
 		Static myText;
 		Button logon, dismiss;
 		HWND myParent;
@@ -53,7 +55,7 @@ public:
 	SecondaryConsentDialog(
 		wstring app_name, wstring operation_name, wstring details,
 		wstring allow_button_text, wstring deny_button_text,
-		bool allow_remember, bool allow_extra, DWORD times = 10
+		bool allow_remember, bool allow_extra, bool isPrivReq, DWORD times = 10
 	);
 	virtual ~SecondaryConsentDialog();
 
@@ -75,6 +77,7 @@ private:
 	void onSessionChange(EventData& ev);
 
 	bool isLocked = false;
+	bool isPrivilegeRequired = false;
 	void setLocked(bool bLocked);
 	void showMoreOptions();
 	bool doCopy();

@@ -326,6 +326,7 @@ int MyProcControlLite_ScControl_Impl2(handle_t IDL_handle, unsigned long control
 	}
 
 	DWORD dwSessionId{};
+	bool bWasNotInteractive = false;
 	if (!ProcessIdToSessionId(client_pid, &dwSessionId)) {
 		*result = GetLastError();
 		return 0;
@@ -333,6 +334,7 @@ int MyProcControlLite_ScControl_Impl2(handle_t IDL_handle, unsigned long control
 	if (dwSessionId == 0) {
 		// non-interactive session, make it interactive
 		dwSessionId = WTSGetActiveConsoleSessionId();
+		bWasNotInteractive = true;
 	}
 
 	auto ensurePerm = [hToken, result] {
@@ -353,6 +355,11 @@ int MyProcControlLite_ScControl_Impl2(handle_t IDL_handle, unsigned long control
 	case 2:
 		// 2: set protection status
 		if (!ensurePerm()) return 0;
+		if (bWasNotInteractive) {
+			// "set prot status" must not be called from non-interactive sessions
+			*result = STATUS_ASSERTION_FAILURE;
+			return 0;
+		}
 		{
 			bool prot = !ServiceCoreProcess::Instance->IsProtectionDisabled();
 			bool newProt = payload;
@@ -372,7 +379,7 @@ bool MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(
 	DWORD client_pid, DWORD dwSessionId,
 	std::wstring app, std::wstring req, std::wstring detailsText,
 	std::wstring allowBtn, std::wstring denyBtn, bool* remember,
-	DWORD timeout, bool showSplitMenu, size_t _MaxRetries
+	DWORD timeout, bool showSplitMenu, bool wasNotInteractive, size_t _MaxRetries
 ) {
 	DWORD prevErr = GetLastError();
 	auto _gg = AcquireSessionConsentUILock(dwSessionId);
@@ -397,10 +404,11 @@ pstart:
 	w32oop::util::str::operations::replace(t, L"\\", L"\\\\");
 	wstring cmd = std::format(L"consent.exe --type=consent --action=secondary --name=\"{}\" "
 		L"--extra1=\"{}\" --extra2=\"{}\" --extra3=\"{}\" --extra4=\"{}\" "
-		L"--extra5={} --extra6={} --extra7=1883 --extra8=\"{}\" --extra9={} --extra10={} --signature={}",
+		L"--extra5={} --extra6={} --extra7=1883 --extra8=\"{}\" --extra9={} --extra10={} "
+		L"--extra11={} --signature={}",
 		ServiceCoreProcess::Instance->getName(), app, req, allowBtn, denyBtn, remember ? L"y" : L"n",
 		timeout, w32oop::util::str::operations::replace(t, L"\"", L"\\\""), randomNonce,
-		showSplitMenu ? L"y" : L"n", sig
+		showSplitMenu ? L"y" : L"n", wasNotInteractive ? L"y" : L"n", sig
 	); // TODO: add i18n; allow remember
 	RtlZeroMemory(&si, sizeof(si));
 	RtlZeroMemory(&pi, sizeof(pi));
@@ -514,15 +522,18 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 		}
 	}
 
-	DWORD dwSessionId{};
+	DWORD dwSessionId{}, callerSession;
+	bool bWasNotInteractive = false;
 	if (!ProcessIdToSessionId(client_pid, &dwSessionId)) {
 		*bSuccess = 0;
 		*error = GetLastError();
 		return 0;
 	}
+	callerSession = dwSessionId;
 	if (dwSessionId == 0) {
 		// non-interactive session, make it interactive
 		dwSessionId = WTSGetActiveConsoleSessionId();
+		bWasNotInteractive = true;
 	}
 	if (!SetTokenInformation(hToken, TokenSessionId, (void*)&dwSessionId, sizeof(DWORD))) {
 		*bSuccess = 0;
@@ -533,12 +544,13 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	// consent first
 	if (!ServiceCoreProcess::Instance->IsProtectionDisabled()) {
 		wstring detailedDetails = std::format(
-			L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nCommand line:\n{}",
-			client_pid, callerName, callerPath, application, cmdline
+			L"Process: ({}) {} [{}] | File: {}\nTarget application: {}\nCommand line:\n{}",
+			client_pid, callerName, callerSession, callerPath, application, cmdline
 		);
 		SetLastError(0xC0000022);
 		bool acc = _XxxxInternalPopSecondaryConsentDialog(client_pid, dwSessionId, callerName, L"LaunchWithControl",
-			detailedDetails, L"Allow", L"Deny", NULL, ServiceCoreProcess::Instance->GetDefaultConsentTimeout(), true);
+			detailedDetails, L"Allow", L"Deny", NULL, ServiceCoreProcess::Instance->GetDefaultConsentTimeout(), true,
+			bWasNotInteractive);
 		if (!acc) {
 			*bSuccess = 0;
 			*error = GetLastError();
@@ -735,41 +747,45 @@ int MyProcControlLite_Consent_CreateProcess_Impl2(
 		}
 	}
 
-	DWORD dwSessionId{};
+	DWORD dwSessionId{}, callerSession;
+	bool bWasNotInteractive = false;
 	if (!ProcessIdToSessionId(client_pid, &dwSessionId)) {
 		*custom_err_code = GetLastError();
 		return 0;
 	}
+	callerSession = dwSessionId;
 	if (dwSessionId == 0) {
 		// non-interactive session, make it interactive
 		dwSessionId = WTSGetActiveConsoleSessionId();
+		bWasNotInteractive = true;
 	}
 
 	// spawn a consent dialog
 	wstring detailedDetails;
 	if (type == 0 || type == 1) detailedDetails = std::format(
-		L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nInherit handles?: {}\n"
+		L"Process: ({}) {} [{}] | File: {}\nTarget application: {}\nInherit handles?: {}\n"
 		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}{}\nCommand line:\n{}",
-		client_pid, callerName, callerPath, application, inherithandles ? L"Yes" : L"No",
+		client_pid, callerName, callerSession, callerPath, application, inherithandles ? L"Yes" : L"No",
 		flags, cd, sisize, (type == 1) ? format(L"\nToken value: {}", token_value) : L"", cmdline
 	);
 	else if (type == 2) detailedDetails = std::format(
-		L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\nToken value: {}\nLogon flags: {}\n"
+		L"Process: ({}) {} [{}] | File: {}\nTarget application: {}\nToken value: {}\nLogon flags: {}\n"
 		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}\nCommand line:\n{}",
-		client_pid, callerName, callerPath, application, token_value, logon_flags,
+		client_pid, callerName, callerSession, callerPath, application, token_value, logon_flags,
 		flags, cd, sisize, cmdline
 	);
 	else if (type == 3) detailedDetails = std::format(
-		L"Process: ({}) {}\nProcess file: {}\nTarget application: {}\n"
+		L"Process: ({}) {} [{}] | File: {}\nTarget application: {}\n"
 		L"Username: {}\nDomain: {}\nPassword: {}\nLogon flags: {}\n"
 		L"Creation flags: {}\nCurrent directory: {}\nStartupInfo Structure Size: {}\nCommand line:\n{}",
-		client_pid, callerName, callerPath, application,
+		client_pid, callerName, callerSession, callerPath, application,
 		username, domain, password, logon_flags,
 		flags, cd, sisize, cmdline
 	);
 	SetLastError(ERROR_ACCESS_DENIED);
 	bool acc = _XxxxInternalPopSecondaryConsentDialog(client_pid, dwSessionId, callerName, type_s,
-		detailedDetails, L"Allow", L"Deny", NULL, ServiceCoreProcess::Instance->GetDefaultConsentTimeout(), true);
+		detailedDetails, L"Allow", L"Deny", NULL, ServiceCoreProcess::Instance->GetDefaultConsentTimeout(), true,
+		bWasNotInteractive);
 	if (acc) {
 		return 1;
 	}

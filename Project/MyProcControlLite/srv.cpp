@@ -766,9 +766,10 @@ bool ServiceCoreProcess::RequestChangeProtection(
 	if (!fEnable) {
 		SetLastError(ERROR_ACCESS_DENIED);
 		if (!MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(client, session, whatApp, 
-			L"Change Protection State", format(L"Process: ({}) {}\nProcess file: {}\nNew protection state: {}ABLE\nIf you "
-			L"want to continue, we will bring you to a secure desktop.", client, whatApp, whereApp, fEnable ? L"EN" : L"DIS"), 
-			L"Continue", L"Block", NULL, GetDefaultConsentTimeout(), TRUE)) {
+			L"Change Protection State", format(L"Process: ({}) {} [{}] | File: {}\nNew protection state: {}ABLE\nIf you "
+			L"want to continue, we will bring you to a secure desktop.",
+				client, whatApp, session, whereApp, fEnable ? L"EN" : L"DIS"), 
+			L"Continue", L"Block", NULL, GetDefaultConsentTimeout(), TRUE, FALSE)) {
 			*error = GetLastError();
 			return false;
 		}
