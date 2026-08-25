@@ -3,13 +3,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>../bin</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
-    <LocalDebuggerCommandArgumentsHistory>--type=consent-test|--type=tray-icon --name="MyProcControl-Lite" --ppid=168|--type=tray-icon --name="MyProcControl-Lite"|--name=111|--name=111 --type=config|</LocalDebuggerCommandArgumentsHistory>
+    <LocalDebuggerCommandArguments>--type=setup --action=uninstall --name="MyProcControl-Lite" --interactive</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArgumentsHistory>--type=tray-icon --name="MyProcControl-Lite" --ppid=168|--type=tray-icon --name="MyProcControl-Lite"|--name=111|--name=111 --type=config|--type=setup --action=uninstall --name="MyProcControl-Lite" --interactive|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--type=setup --action=uninstall --name="MyProcControl-Lite" --interactive</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommandArgumentsHistory>--type=consent-test|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>

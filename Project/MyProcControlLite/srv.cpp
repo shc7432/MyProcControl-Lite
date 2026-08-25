@@ -479,6 +479,7 @@ void WindowsService::ServiceCoreThread() {
 			prod.set(L"InstallDate", RegistryValue(format(L"{:%Y%m%d}",
 				chrono::current_zone()->to_local(chrono::system_clock::now())), REG_SZ));
 			prod.set(L"EstimatedSize", RegistryValue(DWORD(ln.QuadPart) / 1024, REG_DWORD));
+			prod.set(L"MyData:TempDir", RegistryValue(session_res.wstring(), REG_SZ));
 		}
 	} 
 	catch (...) {

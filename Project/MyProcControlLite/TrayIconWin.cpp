@@ -95,7 +95,7 @@ HICON MyProcControl_Lite::UIService::TrayIconWindow::app_icon;
 }
 
 void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
-	icon.setTooltip(L"My Proc Control Lite");
+	icon.setTooltip(format(L"My Proc Control Lite ({})", svc));
 	icon.onClick([this](EventData& ev) { ev.preventDefault(); LaunchWithControl(); });
 	menu = Menu({
 		MenuItem(L"&Launch Process with control", 0x21, [this] { LaunchWithControl(); }),
@@ -173,7 +173,7 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 				CloseHandle(pi.hProcess);
 			}
 		}),
-		MenuItem(L"&Uninstall...", 0x3, [this] {
+		MenuItem(format(L"&Uninstall {}...", svc), 0x3, [this] {
 			auto appPath = make_shared<WCHAR[]>(32768);
 			GetModuleFileNameW(NULL, appPath.get(), 32768);
 			wstring cmd = L"- --type=setup --action=uninstall --interactive --name=\"" + svc + L"\"";
