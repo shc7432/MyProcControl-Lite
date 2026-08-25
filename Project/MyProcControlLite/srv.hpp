@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "targetver.h"
 #include "srvapi.hpp"
+#include "srvconfig.h"
 #include <thread>
 #include <atomic>
 #include <string>
@@ -120,10 +121,7 @@ protected:
 
 	bool _ProtectionDisabled = false;
 
-	struct {
-		bool FailOpen = false;
-		DWORD ConsentTimeout = 30;
-	} Parameters;
+	MyProcControlLite_ServiceParameters Parameters;
 
 public:
 	const std::wstring& getName() const { return name; }
@@ -139,5 +137,6 @@ public:
 		if (v > MAXDWORD) return MAXDWORD;
 		return (DWORD)v;
 	}
+	bool NoConsentOnUnprivilegedSession() const { return Parameters.NoConsentOnUnprivilegedSession; }
 };
 

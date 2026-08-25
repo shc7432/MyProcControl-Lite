@@ -394,6 +394,19 @@ bool MyProcControl_Lite::ServiceCore::_XxxxInternalPopSecondaryConsentDialog(
 	} while (0);
 	auto appPath = make_shared<WCHAR[]>(32768);
 	if (!GetModuleFileNameW(NULL, appPath.get(), 32768)) return false;
+	wstring extra11 = L"n";
+	if (wasNotInteractive) {
+		bool nowAdmin = CheckIsSessionUserNowAdmin(dwSessionId);
+		if (!nowAdmin) {
+			extra11 = L"y";
+			if (ServiceCoreProcess::Instance->NoConsentOnUnprivilegedSession()) {
+				// check fail-open settings
+				if (ServiceCoreProcess::Instance->IsFailOpen()) return true;
+				SetLastError(prevErr ? prevErr : 0xC0000022);
+				return false;
+			}
+		}
+	}
 	size_t nRetries = 0;
 	STARTUPINFOW si{}; PROCESS_INFORMATION pi{};
 pstart:
@@ -408,7 +421,8 @@ pstart:
 		L"--extra11={} --signature={}",
 		ServiceCoreProcess::Instance->getName(), app, req, allowBtn, denyBtn, remember ? L"y" : L"n",
 		timeout, w32oop::util::str::operations::replace(t, L"\"", L"\\\""), randomNonce,
-		showSplitMenu ? L"y" : L"n", wasNotInteractive ? L"y" : L"n", sig
+		showSplitMenu ? L"y" : L"n", extra11, sig
+		// the current user is already admin. just give standard protection
 	); // TODO: add i18n; allow remember
 	RtlZeroMemory(&si, sizeof(si));
 	RtlZeroMemory(&pi, sizeof(pi));
@@ -460,6 +474,28 @@ pstart:
 		return false;
 	}
 	return true;
+}
+
+bool MyProcControl_Lite::ServiceCore::CheckIsSessionUserNowAdmin(DWORD dwSessionId) {
+	HANDLE hToken{};
+	WTSQueryUserToken(dwSessionId, &hToken);
+	if (!hToken) return false;
+	TOKEN_LINKED_TOKEN linkedToken{};
+	DWORD retLen = 0;
+	if (GetTokenInformation(hToken, TokenLinkedToken, &linkedToken, sizeof(linkedToken), &retLen)) {
+		HANDLE NeedClose = hToken;
+		hToken = linkedToken.LinkedToken;
+		CloseHandle(NeedClose);
+	}
+	HANDLE hToken2{};
+	if (DuplicateTokenEx(hToken, TOKEN_QUERY | TOKEN_IMPERSONATE, NULL, SecurityImpersonation, TokenImpersonation, &hToken2)) {
+		HANDLE NeedClose = hToken;
+		hToken = hToken2;
+		CloseHandle(NeedClose);
+	}
+	bool isAdmin = app::IsTokenAdministrators(hToken);
+	CloseHandle(hToken);
+	return isAdmin;
 }
 
 int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR application, PCWSTR cmdline, int* bSuccess, unsigned long* error) {

@@ -2,6 +2,7 @@
 #include "srvapi.hpp"
 #include "processhelper.h"
 #include "resource.h"
+#include <chrono>
 #include <w32use.hpp>
 #include <Aclapi.h>
 #include <Sddl.h>
@@ -458,6 +459,32 @@ void WindowsService::ServiceCoreThread() {
 
 	HANDLE hCrashpadHandler{};
 
+	// write uninstall info
+	try {
+		RegistryKey uninstall(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
+		if (!uninstall.exists(L"Service_" + m_serviceName)) {
+			w32FileHandle hFile = CreateFileW(appPath.get(), FILE_READ_ATTRIBUTES | FILE_READ_EA, FILE_SHARE_READ, 0,
+				OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+			LARGE_INTEGER ln{};
+			GetFileSizeEx(hFile, &ln);
+			auto prod = uninstall.create(L"Service_" + m_serviceName);
+			prod.set(L"DisplayIcon", RegistryValue(appPath.get() + L",0"s, REG_SZ));
+			prod.set(L"DisplayName", RegistryValue(format(L"My Process Control (Lite) ({})", m_serviceName), REG_SZ));
+			prod.set(L"NoRepair", RegistryValue((DWORD)1, REG_DWORD));
+			prod.set(L"UninstallString", RegistryValue(format(L"\"{}\" --type=setup --action=uninstall "
+				L"--name=\"{}\" --interactive", appPath.get(), m_serviceName), REG_SZ));
+			prod.set(L"QuietUninstallString", RegistryValue(format(L"\"{}\" --type=setup --action=uninstall "
+				L"--name=\"{}\"", appPath.get(), m_serviceName), REG_SZ));
+			prod.set(L"ModifyPath", RegistryValue(format(L"\"{}\" --type=config --name=\"{}\"", appPath.get(), m_serviceName), REG_SZ));
+			prod.set(L"InstallDate", RegistryValue(format(L"{:%Y%m%d}",
+				chrono::current_zone()->to_local(chrono::system_clock::now())), REG_SZ));
+			prod.set(L"EstimatedSize", RegistryValue(DWORD(ln.QuadPart) / 1024, REG_DWORD));
+		}
+	} 
+	catch (...) {
+		// TODO: log error
+	}
+
 	// TODO: if failure many times then wait
 	while (!m_stopRequested) {
 		if (m_pauseRequested) {
@@ -606,9 +633,10 @@ void ServiceCoreProcess::LoadConfig() {
 	auto _Parameters = hServiceKey.create(L"Parameters");
 
 #define MakeParam(Type, Name) Type Name = _Parameters.get_value_or<Type>(L ## #Name, (Type)this->Parameters.Name); \
-	this->Parameters.Name = Name;
+	this->Parameters.Name = (decltype(this->Parameters.Name))(Name);
 	MakeParam(DWORD, FailOpen);
 	MakeParam(DWORD, ConsentTimeout);
+	MakeParam(DWORD, NoConsentOnUnprivilegedSession);
 #undef MakeParam
 
 	// verify and fix config

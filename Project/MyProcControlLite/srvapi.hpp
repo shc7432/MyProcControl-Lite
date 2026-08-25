@@ -45,6 +45,8 @@ namespace ServiceCore {
 		std::wstring allowBtn, std::wstring denyBtn, bool* remember,
 		DWORD timeout, bool showSplitMenu, bool wasNotInteractive, size_t = 50
 	);
+
+	bool CheckIsSessionUserNowAdmin(DWORD dwSessionId);
 }
 
 

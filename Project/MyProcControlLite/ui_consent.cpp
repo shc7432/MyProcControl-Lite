@@ -53,30 +53,11 @@ void MyProcControl_Lite::SecondaryConsentDialog::onCreated() {
 	add_style_ex(WS_EX_TOOLWINDOW);
 
 	// test if the current user is admin
-	if (isPrivilegeRequired) do {
-		HANDLE hToken{};
+	if (isPrivilegeRequired) {
 		DWORD dwSessionId{}; ProcessIdToSessionId(GetCurrentProcessId(), &dwSessionId);
-		WTSQueryUserToken(dwSessionId, &hToken);
-		if (!hToken) break;
-		TOKEN_LINKED_TOKEN linkedToken{};
-		DWORD retLen = 0;
-		if (GetTokenInformation(hToken, TokenLinkedToken, &linkedToken, sizeof(linkedToken), &retLen)) {
-			HANDLE NeedClose = hToken;
-			hToken = linkedToken.LinkedToken;
-			CloseHandle(NeedClose);
-		}
-		HANDLE hToken2{};
-		if (DuplicateTokenEx(hToken, TOKEN_QUERY | TOKEN_IMPERSONATE, NULL, SecurityImpersonation, TokenImpersonation, &hToken2)) {
-			HANDLE NeedClose = hToken;
-			hToken = hToken2;
-			CloseHandle(NeedClose);
-		}
-		bool isAdmin = app::IsTokenAdministrators(hToken);
-		if (isAdmin) {
+		if (MyProcControl_Lite::ServiceCore::CheckIsSessionUserNowAdmin(dwSessionId))
 			isPrivilegeRequired = false; // the current user is already admin. just give standard protection
-		}
-		CloseHandle(hToken);
-	} while (0);
+	}
 
 	hLocker = CreateWindowExW(0, BackgroundLayeredAlphaWindowClassNameW, L"", WS_POPUP, 0, 0, 1, 1, hwnd, 0, 0, 0);
 	EnableWindow(hLocker, false);

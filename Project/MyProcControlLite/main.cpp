@@ -51,13 +51,16 @@ int WINAPI wWinMain(
 	if (FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED))) __fastfail(FAST_FAIL_FATAL_APP_EXIT);
 	w32oop::util::RAIIHelper comUninit([] { CoUninitialize(); });
 	CLI::App app;
+	app.allow_extras();
 	string u8type, u8name, u8action, u8ppid, u8sig;
+	bool interactive = false;
 	array<string, 16> u8extras;
 	app.add_option("--type", u8type);
 	app.add_option("--name", u8name);
 	app.add_option("--action", u8action);
 	app.add_option("--ppid", u8ppid);
 	app.add_option("--signature", u8sig);
+	app.add_flag("--interactive", interactive);
 	for (int i = 0; i < 16; ++i) app.add_option("--extra" + to_string(i + 1), u8extras[i]);
 	try { app.parse(utf16_utf8(GetCommandLineW()), true); } catch (...) {}
 	auto argc = app.count_all();
@@ -126,8 +129,12 @@ int WINAPI wWinMain(
 		return RunCommandLineInterface(name, action, u8extras);
 	}
 
+	if (type == L"config") {
+		return RunConfigUI(name);
+	}
+
 	if (type == L"setup" || (type == L"" && argc < 2)) {
-		return RunSetupUI(name, action);
+		return RunSetupUI(name, action, interactive);
 	}
 
 	return ERROR_INVALID_PARAMETER;

@@ -147,7 +147,7 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 		}),
 		// TODO: graphics process selector
 		MenuItem::separator(),
-		MenuItem(L"Control status...", 0xf01, [this] {
+		MenuItem(L"Control &Status...", 0xf01, [this] {
 			ULONG r = 0xc0000001;
 			if (!MyProcControl_Lite::RpcClient::ScControl(1, 0, &r, (L"MyProcControlLiteRpc_" + svc).c_str())) {
 				MessageBoxW(NULL, ErrorChecker(r).message().c_str(), NULL, MB_ICONERROR);
@@ -160,16 +160,38 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 				TDCBF_CANCEL_BUTTON, r ? TD_INFORMATION_ICON : TD_WARNING_ICON, &u);
 			if (u == IDRETRY) menu.pop();
 		}),
-		MenuItem(L"Pause control", 0xf02, [this] { doControlUpdate(0); }),
-		MenuItem(L"Resume control", 0xf03, [this] { doControlUpdate(1); }),
+		MenuItem(L"P&ause control", 0xf02, [this] { doControlUpdate(0); }),
+		MenuItem(L"&Resume control", 0xf03, [this] { doControlUpdate(1); }),
 		MenuItem::separator(),
-		MenuItem(L"Restart tray", 0x1, [this] {
+		MenuItem(L"C&onfiguration...", 0x2, [this] {
+			auto appPath = make_shared<WCHAR[]>(32768);
+			GetModuleFileNameW(NULL, appPath.get(), 32768);
+			wstring cmd = L"- --type=config --name=\"" + svc + L"\"";
+			STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+			if (CreateProcessW(appPath.get(), cmd.data(), 0, 0, 0, 0, 0, 0, &si, &pi)) {
+				CloseHandle(pi.hThread);
+				CloseHandle(pi.hProcess);
+			}
+		}),
+		MenuItem(L"&Uninstall...", 0x3, [this] {
+			auto appPath = make_shared<WCHAR[]>(32768);
+			GetModuleFileNameW(NULL, appPath.get(), 32768);
+			wstring cmd = L"- --type=setup --action=uninstall --interactive --name=\"" + svc + L"\"";
+			STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+			if (CreateProcessW(appPath.get(), cmd.data(), 0, 0, 0, 0, 0, 0, &si, &pi)) {
+				CloseHandle(pi.hThread);
+				CloseHandle(pi.hProcess);
+			}
+		}),
+		MenuItem::separator(),
+		MenuItem(L"Restart &tray", 0x1, [this] {
 			destroy();
 		}),
-		MenuItem(L"Stop service", 0x1f00, [this] {
-			ShellExecuteW(NULL, L"runas", L"SC.EXE", (L"stop \"" + svc + L"\"").c_str(),NULL,SW_HIDE);
+		MenuItem(L"St&op service", 0x1f00, [this] {
+			ShellExecuteW(NULL, L"runas", L"SC.EXE", (L"stop \"" + svc + L"\"").c_str(), NULL, SW_HIDE);
 		}),
 	});
+	menu.set_default(0);
 	icon.setMenu(&menu);
 	icon.setIcon(get_window_icon());
 	icon.onBalloonClick([this](EventData& ev) {
