@@ -39,7 +39,8 @@ int RunCommandLineInterface(std::wstring name, std::wstring action, const std::a
 			auto Mybuf = make_unique<uint8_t[]>(size + 1); SIZE_T r{};
 			if (!ReadProcessMemory(hProcess, (LPCVOID)mem, Mybuf.get(), size, &r)) return GetLastError();
 			auto Mydata = (PCWSTR)Mybuf.get();
-			return MyProcControl_Lite::TrayIconWin_RequestLaunchProc(L"", Mydata, (L"MyProcControlLiteRpc_" + name).c_str());
+			return MyProcControl_Lite::TrayIconWin_RequestLaunchProc(L"", Mydata,
+				(L"MyProcControlLiteRpc_" + name).c_str(), u8extras[4] == "y");
 		}
 		catch (...) {
 			return GetLastError();

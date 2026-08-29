@@ -37,7 +37,7 @@ bool util_IsCurrentProcessSYSTEM();
 
 namespace app {
 	bool KillProcess(DWORD p);
-	bool KillOrUninstallApplication(DWORD p, BOOL Uninst);
+	bool KillOrUninstallApplicationEx(DWORD p, BOOL Uninst);
 
 	DWORD GetCurrentProcessPPID();
 

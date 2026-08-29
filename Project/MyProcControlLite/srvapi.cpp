@@ -461,7 +461,7 @@ pstart:
 	if (remember) *remember = Myremember;
 	if (!acc) {
 		if (kill || uninstall) {
-			if (!app::KillOrUninstallApplication(client_pid, uninstall)) {
+			if (!app::KillOrUninstallApplicationEx(client_pid, uninstall)) {
 				WCHAR title[] = L"Error"; DWORD tmp{};
 				wstring err = format(L"Cannot {} the application!\n\n{}",
 					uninstall ? L"uninstall" : L"close", ErrorChecker().message());
@@ -502,6 +502,11 @@ int MyProcControlLite_LaunchWithControl_Impl2(handle_t IDL_handle, PCWSTR applic
 	if (!application || !cmdline || !bSuccess || !error) {
 		if (bSuccess) *bSuccess = 0;
 		if (error) *error = ERROR_INVALID_PARAMETER;
+		return 0;
+	}
+	if (!ServiceCoreProcess::Instance->IsAggressiveLauncherEnabled()) {
+		*bSuccess = 0;
+		*error = 0xC00000BB;
 		return 0;
 	}
 	auto appPath = make_shared<WCHAR[]>(32768);

@@ -1,9 +1,13 @@
 ﻿#include "processhelper.h"
 #include <userenv.h>
 #include <tlhelp32.h>
+#include <AclAPI.h>
 #include <vector>
+#include <filesystem>
+#include <WtsApi32.h>
 #pragma comment(lib, "Userenv.lib")
 #pragma comment(lib, "rpcrt4.lib")
+#pragma comment(lib, "wtsapi32.lib")
 using namespace std;
 
 FARPROC app::GetProcAddress(HMODULE hModule, PCSTR name) {
@@ -335,9 +339,10 @@ bool app::KillProcess(DWORD p) {
 }
 
 
-bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
+bool app::KillOrUninstallApplicationEx(DWORD p, BOOL Uninst) {
 	HANDLE hProcess = OpenProcess(PROCESS_SUSPEND_RESUME | PROCESS_TERMINATE |
 		PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, p);
+	DWORD err = GetLastError();
 	if (hProcess) {
 		SuspendProcess(hProcess);
 	}
@@ -359,6 +364,7 @@ bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
 
 	if (hProcess) {
 		ok |= (bool)TerminateProcess(hProcess, 0xC0000002);
+		err = GetLastError();
 	}
 	else {
 		if (Uninst) return false;
@@ -421,9 +427,118 @@ bool app::KillOrUninstallApplication(DWORD p, BOOL Uninst) {
 	} while (Process32NextW(hSnapshot, &pe32));
 	CloseHandle(hSnapshot);
 
+	// check whether the client is eligible to uninstall the application
+	if (!hProcess) {
+		SetLastError(err);
+		return false;
+	}
+	HANDLE hToken{};
+	bool hasperm = false;
+	do {
+		DWORD dwSessionId{};
+		if (!ProcessIdToSessionId(p, &dwSessionId)) return false;
+		if (dwSessionId == 0) {
+			hasperm = true;
+			break;
+		}
+		WTSQueryUserToken(dwSessionId, &hToken);
+		if (!hToken) return false;
+		TOKEN_LINKED_TOKEN linkedToken{};
+		DWORD retLen = 0;
+		if (GetTokenInformation(hToken, TokenLinkedToken, &linkedToken, sizeof(linkedToken), &retLen)) {
+			HANDLE NeedClose = hToken;
+			hToken = linkedToken.LinkedToken;
+			CloseHandle(NeedClose);
+		}
+		HANDLE hToken2{};
+		if (DuplicateTokenEx(hToken, TOKEN_QUERY | TOKEN_IMPERSONATE, NULL, SecurityImpersonation, TokenImpersonation, &hToken2)) {
+			HANDLE NeedClose = hToken;
+			hToken = hToken2;
+			CloseHandle(NeedClose);
+		}
+	} while (0);
+	if (hasperm || IsTokenAdministrators(hToken)) {
+		hasperm = true;
+	}
+	else if (ImpersonateLoggedOnUser(hToken)) do {
+		PSECURITY_DESCRIPTOR pSD{};
+		goto docheck;
+	permok:
+		hasperm = true;
+		goto endcheck;
+	permdie:
+		hasperm = false;
+		goto endcheck;
+	endcheck:
+		if (pSD) LocalFree(pSD);
+		RevertToSelf();
+		break;
+	docheck:
+		EnableAllPrivileges(hToken);
+		// 1. check whether all processes can be opened by the user
+		for (auto& i : kills) {
+			HANDLE hProcess = OpenProcess(PROCESS_SUSPEND_RESUME | PROCESS_TERMINATE, FALSE, i);
+			if (!hProcess) goto permdie;
+			CloseHandle(hProcess);
+		}
+		// 2. check whether the user can delete the file
+		GENERIC_MAPPING GenericMapping = {
+			FILE_GENERIC_READ,
+			FILE_GENERIC_WRITE,
+			FILE_GENERIC_EXECUTE,
+			FILE_ALL_ACCESS
+		};
+		// check file itself
+		DWORD dwRet = GetNamedSecurityInfoW(
+			targetPath.c_str(),
+			SE_FILE_OBJECT,
+			OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+			nullptr, nullptr, nullptr, nullptr,
+			&pSD
+		);
+		if (dwRet || !pSD) goto checkcontainerdelete;
+		{
+			PRIVILEGE_SET PrivilegeSet{};
+			DWORD dwPrivSetSize = sizeof(PRIVILEGE_SET);
+			DWORD dwGrantedAccess = 0;
+			BOOL bAccessStatus = FALSE;
+			if (!AccessCheck(pSD, hToken, DELETE, &GenericMapping, &PrivilegeSet, &dwPrivSetSize,
+				&dwGrantedAccess, &bAccessStatus)) goto checkcontainerdelete;
+			if (bAccessStatus) goto permok;
+		}
+		// if file does not has DELETE, but container has, also allow
+		LocalFree(pSD); // pSD is not null here
+		pSD = NULL;
+	checkcontainerdelete:
+		dwRet = GetNamedSecurityInfoW(
+			filesystem::path(targetPath).parent_path().make_preferred().c_str(),
+			SE_FILE_OBJECT,
+			OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+			nullptr, nullptr, nullptr, nullptr,
+			&pSD
+		);
+		if (dwRet || !pSD) goto permdie;
+		{
+			PRIVILEGE_SET PrivilegeSet{};
+			DWORD dwPrivSetSize = sizeof(PRIVILEGE_SET);
+			DWORD dwGrantedAccess = 0;
+			BOOL bAccessStatus = FALSE;
+			if (!AccessCheck(pSD, hToken, FILE_DELETE_CHILD, &GenericMapping, &PrivilegeSet, &dwPrivSetSize,
+				&dwGrantedAccess, &bAccessStatus)) goto permdie;
+			if (!bAccessStatus) goto permdie;
+		}
+		goto permok;
+	} while (0);
+	CloseHandle(hToken);
+	if (!hasperm) {
+		SetLastError(0xC0000022);
+		return false;
+	}
+
 	for (auto& i : kills) KillProcess(i);
 
-	for (size_t i = 0;i < 5;++i) {
+	SetFileAttributesW(targetPath.c_str(), FILE_ATTRIBUTE_NORMAL);
+	for (size_t i = 0; i < 5; ++i) {
 		ok = ::DeleteFileW(targetPath.c_str());
 		if (ok) break;
 		Sleep(10);

@@ -8,7 +8,7 @@ using namespace std;
 
 static HANDLE hUIProcess;
 
-int SessionWorker(std::wstring name, DWORD ppid) {
+int SessionWorker(std::wstring name, DWORD ppid, bool cfg_agg) {
 	if (name.empty() || !ppid) return ERROR_INVALID_PARAMETER;
 
 	HANDLE PPID = OpenProcess(GENERIC_READ | SYNCHRONIZE, FALSE, ppid);
@@ -47,7 +47,8 @@ int SessionWorker(std::wstring name, DWORD ppid) {
 			}
 		}
 
-		wstring cmd = L"interfaced --type=tray-icon --name=\"" + name + L"\" --ppid=" + to_wstring((ULONG_PTR)can_sync);
+		wstring cmd = L"interfaced --type=tray-icon --name=\"" + name + L"\" --ppid=" + to_wstring((ULONG_PTR)can_sync) +
+			L" --extra2=" + (cfg_agg ? L"y" : L"n");
 		STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
 		if (!CreateProcessAsUserW(hToken, app.get(), cmd.data(), NULL, NULL, TRUE,
 			CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP | CREATE_UNICODE_ENVIRONMENT,

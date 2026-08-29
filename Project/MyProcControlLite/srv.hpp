@@ -137,6 +137,7 @@ public:
 		if (v > MAXDWORD) return MAXDWORD;
 		return (DWORD)v;
 	}
+	bool IsAggressiveLauncherEnabled() const { return Parameters.EnableAggressiveLauncher; }
 	bool NoConsentOnUnprivilegedSession() const { return Parameters.NoConsentOnUnprivilegedSession; }
 };
 

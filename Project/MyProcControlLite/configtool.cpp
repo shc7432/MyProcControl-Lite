@@ -18,6 +18,8 @@ extern HINSTANCE hInst;
 const MyProcControl_Lite::ConfigItemDef MyProcControl_Lite::ConfigTool::itemDefs[] = {
 	DefineParam(FailOpen, L"Fail-Open"),
 	DefineParam(ConsentTimeout, L"Timeout in seconds for consent dialogs before auto-deny. -1 means no timeout."),
+	DefineParam(EnableAggressiveLauncher, L"Enable more aggressive launcher. If enabled, the launcher will be safer but "
+		"some antimalware softwares may flag this product as malicious. Don't worry - there are no malware here."),
 	DefineParam(NoConsentOnUnprivilegedSession, L"Block consent dialogs on unprivileged Windows session "
 		"if request comes from services session (0)."),
 };
@@ -176,8 +178,7 @@ int MyProcControl_Lite::ListView::hitTest(int x, int y) {
 }
 
 void MyProcControl_Lite::ListView::autoSizeLastColumn(int col0Width, int col1Width) {
-	RECT rc{};
-	GetClientRect(hwnd, &rc);
+	RECT rc = client_rect();
 	int clientW = rc.right - rc.left;
 	int lastW = clientW - col0Width - col1Width;
 	if (lastW < 50) lastW = 50;
@@ -254,9 +255,7 @@ void MyProcControl_Lite::ConfigTool::onCreated() {
 	doLayout();
 }
 
-void MyProcControl_Lite::ConfigTool::onDestroy() {
-	// child controls are member variables; framework cleans up their HWNDs
-}
+void MyProcControl_Lite::ConfigTool::onDestroy() {}
 
 // ---------------------------------------------------------------------------
 //  layout
@@ -264,8 +263,7 @@ void MyProcControl_Lite::ConfigTool::onDestroy() {
 void MyProcControl_Lite::ConfigTool::doLayout() {
 	if (!listView.created()) return;
 
-	RECT rc{};
-	GetClientRect(hwnd, &rc);
+	RECT rc = client_rect();
 	int W = rc.right - rc.left;
 	int H = rc.bottom - rc.top;
 	int top = MARGIN;
@@ -484,6 +482,8 @@ void MyProcControl_Lite::ConfigTool::configureNow() {
 		int exitCode = runSetupProcess(L"install");
 		if (exitCode != 0) return;   // setup showed its own error dialog
 		checkServiceStatus();          // should now report installed
+		close();
+		return;
 	}
 
 	// write parameters to registry (shared flow for both fresh & existing)
@@ -511,8 +511,16 @@ void MyProcControl_Lite::ConfigTool::configureNow() {
 		return;
 	}
 
-	MessageBoxW(hwnd, L"Configuration has been saved successfully.",
-		L"Success", MB_ICONINFORMATION);
+	if (MessageBoxW(hwnd, L"Configuration has been saved successfully!\nYou will need to restart the service to apply them!\n"
+		L"Do you want to restart now?",
+		L"Success", MB_OKCANCEL | MB_ICONINFORMATION) == IDOK) {
+		hide();
+		ServiceManager scm;
+		auto sc = scm.get(this->svc);
+		sc.stop();
+		Sleep(3000);
+		sc.start();
+	}
 	updateButtonStates();
 	close();
 }
@@ -532,7 +540,7 @@ int MyProcControl_Lite::ConfigTool::runSetupProcess(const std::wstring& action) 
 	GetModuleFileNameW(NULL, program, MAX_PATH);
 
 	hide();
-	w32oop::util::RAIIHelper _([this] {show();});
+	//w32oop::util::RAIIHelper _([this] {show();});
 
 	wstring cmdLine = L"\"" + wstring(program) +
 		L"\" --type=setup --name=\"" + svc + L"\" --interactive --action=" + action;

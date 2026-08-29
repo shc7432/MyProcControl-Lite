@@ -637,6 +637,7 @@ void ServiceCoreProcess::LoadConfig() {
 	this->Parameters.Name = (decltype(this->Parameters.Name))(Name);
 	MakeParam(DWORD, FailOpen);
 	MakeParam(DWORD, ConsentTimeout);
+	MakeParam(DWORD, EnableAggressiveLauncher);
 	MakeParam(DWORD, NoConsentOnUnprivilegedSession);
 #undef MakeParam
 
@@ -741,7 +742,8 @@ int ServiceCoreProcess::RealEntry() {
 				if (user.empty()) continue;
 				if (sessionProcesses.contains(pWtsSessionInfo[dwI].SessionId)) continue;
 				// launch a worker in this session
-				wstring cmd = L"workerw --type=session-worker --name=\"" + name + L"\" --ppid=" + to_wstring(GetCurrentProcessId());
+				wstring cmd = L"workerw --type=session-worker --name=\"" + name + L"\" --ppid=" + to_wstring(GetCurrentProcessId())
+					+ L" --extra2=" + (IsAggressiveLauncherEnabled() ? L"y" : L"n");
 				STARTUPINFOW si{ sizeof(si) }; PROCESS_INFORMATION pi{};
 				if (!CreateProcessInSession(pWtsSessionInfo[dwI].SessionId, appPath.get(), cmd.data(),
 					NULL, NULL, FALSE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi, true)) {

@@ -82,7 +82,7 @@ int WINAPI wWinMain(
 	}
 
 	if (type == L"session-worker") {
-		return SessionWorker(name, Ppid);
+		return SessionWorker(name, Ppid, u8extras[1] == "y");
 	}
 
 	if (type == L"tray-icon") {
@@ -100,7 +100,7 @@ int WINAPI wWinMain(
 			if (hWaiter) CloseHandle(hWaiter);
 			else return GetLastError();
 		}
-		UIService::TrayIconWindow win(name);
+		UIService::TrayIconWindow win(name, u8extras[1] == "y");
 		win.create();
 		win.set_main_window();
 		return win.run();

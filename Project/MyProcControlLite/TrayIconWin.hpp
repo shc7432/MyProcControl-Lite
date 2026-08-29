@@ -9,7 +9,7 @@ namespace UIService {
 class TrayIconWindow : public Window
 {
 public:
-	TrayIconWindow(wstring svc) : Window(svc, 1, 1), svc(svc) {};
+	TrayIconWindow(wstring svc, bool agg = false) : Window(svc, 1, 1), svc(svc), agg(agg) {};
 	HICON get_window_icon() override {
 		return myicon();
 	}
@@ -20,6 +20,7 @@ protected:
 	Menu menu;
 	static HICON app_icon;
 	std::wstring m_rpcEndpoint;
+	bool agg;
 	void onCreated();
 	virtual void setup_event_handlers() override {
 		WINDOW_add_handler(WM_CLOSE, [this](EventData& ev) {
@@ -42,7 +43,7 @@ protected:
 
 }
 
-int TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint);
+int TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint, bool agg);
 
 int TrayIconWin_RequestAttachControl(
 	unsigned long pid,

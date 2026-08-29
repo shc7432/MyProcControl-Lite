@@ -285,7 +285,7 @@ void MyProcControl_Lite::SecondaryConsentDialog::setLocked(bool bLocked) {
 
 void MyProcControl_Lite::SecondaryConsentDialog::showMoreOptions() {
 	if (isLocked) return;
-	RECT rc{}; GetWindowRect(deny_button, &rc);
+	RECT rc = deny_button.rect();
 	int ret = Menu({
 		MenuItem(m_constructor_data__deny_button_text, 1),
 		MenuItem::separator(),

@@ -1,6 +1,7 @@
 ﻿#include "TrayIconWin.hpp"
 #include <shobjidl.h>
 #include <shlobj.h>
+#include <filesystem>
 #include "processhelper.h"
 #include "srvapi.hpp"
 #include "resource.h"
@@ -10,7 +11,37 @@
 
 extern HINSTANCE hInst;
 
-int MyProcControl_Lite::TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint) {
+int MyProcControl_Lite::TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd, PCWSTR endpoint, bool agg) {
+	DWORD dwProcessId{}; HANDLE hThread{};
+	if (!agg) {
+		dwProcessId = ([](PCWSTR app, PCWSTR lpszCmd, PHANDLE threadHandle) -> DWORD {
+			STARTUPINFO si{ sizeof(si) }; PROCESS_INFORMATION pi{};
+			wstring cmd = lpszCmd;
+			if (app[0] == 0) app = 0;
+			if (!CreateProcessW(app, cmd.data(), 0, 0, 0, CREATE_SUSPENDED, 0, 0, &si, &pi)) {
+				return 0;
+			}
+			CloseHandle(pi.hThread);
+			auto PathPtr = make_shared<WCHAR[]>(32768); DWORD size = 32768;
+			if (!QueryFullProcessImageNameW(pi.hProcess, 0, PathPtr.get(), &size)) {
+				TerminateProcess(pi.hProcess, 0);
+				CloseHandle(pi.hProcess);
+				return 0;
+			}
+			filesystem::path cd = PathPtr.get();
+			cd = cd.parent_path();
+			TerminateProcess(pi.hProcess, 0);
+			CloseHandle(pi.hProcess);
+			if (!CreateProcessW(app, cmd.data(), 0, 0, 0, CREATE_SUSPENDED, 0, cd.c_str(), &si, &pi)) {
+				return 0;
+			}
+			CloseHandle(pi.hProcess);
+			*threadHandle = pi.hThread;
+			return pi.dwProcessId;
+		})(appPath, cmd, &hThread);
+		if (!dwProcessId) return GetLastError();
+	}
+
 	RPC_WSTR bindingStr = nullptr;
 	RPC_STATUS status = RpcStringBindingComposeW(
 		nullptr,
@@ -29,8 +60,9 @@ int MyProcControl_Lite::TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd
 	int bSuccess = 0;
 	unsigned long error = 0;
 	int rpcRet = 0;
-	RpcTryExcept {
-		rpcRet = MyProcControlLite_LaunchWithControl(hBinding, appPath, cmd, &bSuccess, &error);
+	RpcTryExcept{
+		if (agg) rpcRet = MyProcControlLite_LaunchWithControl(hBinding, appPath, cmd, &bSuccess, &error);
+		else rpcRet = MyProcControlLite_RequestAddControl(hBinding, dwProcessId, &error);
 	}
 	RpcExcept(EXCEPTION_EXECUTE_HANDLER) {
 		RpcBindingFree(&hBinding);
@@ -40,6 +72,19 @@ int MyProcControl_Lite::TrayIconWin_RequestLaunchProc(PCWSTR appPath, PCWSTR cmd
 
 	RpcBindingFree(&hBinding);
 
+	if (!agg) {
+		if (hThread) {
+#pragma warning(push)
+#pragma warning(disable: 6258)
+			if (!rpcRet) TerminateThread(hThread, 1);
+			else ResumeThread(hThread);
+#pragma warning(pop)
+			CloseHandle(hThread);
+		}
+		SetLastError(error);
+		if (!rpcRet) return error;
+		return 0;
+	}
 	if (rpcRet != RPC_S_OK) return rpcRet;
 	SetLastError(error);
 	if (!bSuccess) return error;
@@ -113,7 +158,7 @@ void MyProcControl_Lite::UIService::TrayIconWindow::onCreated() {
 				return;
 			}
 			int err = MyProcControl_Lite::TrayIconWin_RequestLaunchProc(L"",
-				r.value().c_str(), (L"MyProcControlLiteRpc_" + svc).c_str());
+				r.value().c_str(), (L"MyProcControlLiteRpc_" + svc).c_str(), agg);
 			if (err != ERROR_SUCCESS) handleUserLaunchError(r.value(), err);
 		}),
 		MenuItem(L"Attach control to process by &PID", 0x23, [this] {
@@ -272,7 +317,7 @@ cleanup:
 
 	std::thread([this](HWND hwnd, wstring user, wstring endpoint) {
 		int err = MyProcControl_Lite::TrayIconWin_RequestLaunchProc(
-			user.c_str(), (L"\""s + user + L"\"").c_str(), endpoint.c_str());
+			user.c_str(), (L"\""s + user + L"\"").c_str(), endpoint.c_str(), agg);
 		if (err != ERROR_SUCCESS) handleUserLaunchError((L"\""s + user + L"\""), err);
 	}, hwnd, user, L"MyProcControlLiteRpc_" + svc).detach();
 }
@@ -303,8 +348,8 @@ bool MyProcControl_Lite::UIService::TrayIconWindow::LaunchElevated(wstring cmd, 
 	GetModuleFileNameW(NULL, program.get(), 32768);
 	sei.lpFile = program.get();
 	wstring params = format(L"--type=command-line-interface --action=launch "
-		L"--name=\"{}\" --extra1=1 --extra2={} --extra3={} --extra4={}", svc, GetCurrentProcessId(),
-		(ULONG_PTR)Memory, Size);
+		L"--name=\"{}\" --extra1=1 --extra2={} --extra3={} --extra4={} --extra5={}", svc, GetCurrentProcessId(),
+		(ULONG_PTR)Memory, Size, agg ? L"y" : L"n");
 	sei.lpParameters = params.c_str();
 	if (ShellExecuteExW(&sei) && sei.hProcess) {
 		WaitForSingleObject(sei.hProcess, INFINITE);
@@ -313,7 +358,7 @@ bool MyProcControl_Lite::UIService::TrayIconWindow::LaunchElevated(wstring cmd, 
 		CloseHandle(sei.hProcess);
 		if (code == ERROR_SUCCESS) return true;
 		err = (int)code;
-		return true;
+		return false;
 	}
 	else return false;
 }
