@@ -103,17 +103,22 @@ int RunSetupUI(std::wstring name, std::wstring action, bool interactive) {
 				(L"Process Control Server (" + name + L")").c_str(),
 				SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
 				cmdLine.c_str(), NULL, NULL,
-				L"RpcSs\0DcomLaunch\0LSM\0CryptSvc\0SamSs\0ProfSvc\0UserManager\0EventSystem\0SENS\0",
+				L"RpcSs\0DcomLaunch\0LSM\0SamSs\0ProfSvc\0UserManager\0",
 				NULL, NULL));
 			SERVICE_DESCRIPTIONW a{};
 			WCHAR desc[] = L"Process Control Server";
 			a.lpDescription = desc;
 			ChangeServiceConfig2W(myService, SERVICE_CONFIG_DESCRIPTION, &a);
-			if (!myService.start()) throw w32oop::exceptions::system_exception("Failed to start service.");
 
+			int user = 0;
 			if (interactive) TaskDialog(NULL, NULL, L"MyProcControl (Lite) Setup",
 				L"The product has been successfully installed to your computer.",
-				L"Click OK to dismiss.", TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON, TD_INFORMATION_ICON, NULL);
+				format(L"Do you want to start the service now?\n\nIf you don't want to start now, you can run the "
+					L"following command later to start the service:\nSC.EXE START \"{}\"", name).c_str(),
+				TDCBF_YES_BUTTON | TDCBF_CANCEL_BUTTON, TD_INFORMATION_ICON, &user);
+			if (user == IDYES) {
+				if (!myService.start()) throw w32oop::exceptions::system_exception("Failed to start service.");
+			}
 			return 0;
 		}
 		if (action == L"uninstall") {

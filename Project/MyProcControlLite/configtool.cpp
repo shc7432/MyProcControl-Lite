@@ -519,10 +519,14 @@ void MyProcControl_Lite::ConfigTool::configureNow() {
 				return;
 			}
 			instPath = p.wstring();
+			MessageBoxW(hwnd, format(L"We've helped you to put the app into {}! You can delete the installer after finish.",
+				instPath).c_str(), L"Installer", MB_ICONINFORMATION);
 		}
 		int exitCode = runSetupProcess(L"install", instPath.empty() ? NULL : instPath.c_str());
 		if (exitCode != 0) {
 			if (!instPath.empty()) DeleteFileW(instPath.c_str());
+			show();
+			enable();
 			return;   // setup showed its own error dialog
 		}
 		checkServiceStatus();          // should now report installed
@@ -600,9 +604,10 @@ int MyProcControl_Lite::ConfigTool::runSetupProcess(const std::wstring& action, 
 		return (int)err;
 	}
 	CloseHandle(pi.hThread);
-	WaitForSingleObject(pi.hProcess, INFINITE);
+	WaitForSingleObject(pi.hProcess, 1000);
 	DWORD exitCode = 0;
 	GetExitCodeProcess(pi.hProcess, &exitCode);
 	CloseHandle(pi.hProcess);
+	if (exitCode == STILL_ACTIVE) return 0;
 	return (int)exitCode;
 }
