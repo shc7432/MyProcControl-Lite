@@ -479,7 +479,9 @@ void MyProcControl_Lite::ConfigTool::configureNow() {
 	if (!isAdmin) return;
 
 	// fresh install: run setup --action=install first
+	bool isNew = false;
 	if (!serviceInstalled) {
+		isNew = true;
 		wstring instPath;
 		int user = MessageBoxW(hwnd, L"Do you want to copy the product to a suitable location to install, "
 			L"or just install in place?\nWe strongly recommended you to install to a suitable location. "
@@ -530,8 +532,6 @@ void MyProcControl_Lite::ConfigTool::configureNow() {
 			return;   // setup showed its own error dialog
 		}
 		checkServiceStatus();          // should now report installed
-		close();
-		return;
 	}
 
 	// write parameters to registry (shared flow for both fresh & existing)
@@ -559,6 +559,10 @@ void MyProcControl_Lite::ConfigTool::configureNow() {
 		return;
 	}
 
+	if (isNew) {
+		close();
+		return;
+	}
 	if (MessageBoxW(hwnd, L"Configuration has been saved successfully!\nYou will need to restart the service to apply them!\n"
 		L"Do you want to restart now?",
 		L"Success", MB_OKCANCEL | MB_ICONINFORMATION) == IDOK) {

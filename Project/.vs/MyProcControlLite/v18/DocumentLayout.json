@@ -1,37 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\setupui.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\setupui.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    }
-  ],
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": [
-        {
-          "DockedWidth": 200,
-          "SelectedChildIndex": 0,
-          "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "setupui.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\setupui.cpp",
-              "RelativeDocumentMoniker": "MyProcControlLite\\setupui.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\setupui.cpp",
-              "RelativeToolTip": "MyProcControlLite\\setupui.cpp",
-              "ViewState": "AgIAAFoAAAAAP4wQHo0SwHIAAABFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-08-29T08:04:01.465Z",
-              "EditorCaption": ""
-            }
-          ]
-        }
-      ]
+      "DocumentGroups": []
     }
   ]
 }
