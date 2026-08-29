@@ -306,6 +306,10 @@
     <None Include="..\bin\XInjectHelper86.dll">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="..\dllcache\core64.dll" />
+    <None Include="..\dllcache\core86.dll" />
+    <None Include="..\dllcache\XInjectHelper64.dll" />
+    <None Include="..\dllcache\XInjectHelper86.dll" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon.ico">

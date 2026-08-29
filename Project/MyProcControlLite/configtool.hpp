@@ -133,7 +133,7 @@ protected:
 	void changeTarget();
 	void configureNow();
 	void uninstallNow();
-	int  runSetupProcess(const std::wstring& action);
+	int  runSetupProcess(const std::wstring& action, PCWSTR app = NULL);
 	static bool checkIsAdmin();
 };
 

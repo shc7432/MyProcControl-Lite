@@ -264,6 +264,10 @@
     <None Include="..\bin\core86.dll" />
     <None Include="..\bin\XInjectHelper64.dll" />
     <None Include="..\bin\XInjectHelper86.dll" />
+    <None Include="..\dllcache\core64.dll" />
+    <None Include="..\dllcache\core86.dll" />
+    <None Include="..\dllcache\XInjectHelper64.dll" />
+    <None Include="..\dllcache\XInjectHelper86.dll" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon.ico" />

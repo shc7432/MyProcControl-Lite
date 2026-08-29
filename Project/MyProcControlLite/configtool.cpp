@@ -4,6 +4,7 @@
 #include <shlobj.h>
 #include <uxtheme.h>
 #include <string>
+#include <filesystem>
 #pragma comment(lib, "uxtheme.lib")
 
 using namespace std;
@@ -149,7 +150,7 @@ void MyProcControl_Lite::ListView::setItemText(int item, int subItem, const std:
 }
 
 std::wstring MyProcControl_Lite::ListView::getItemText(int item, int subItem) {
-	wchar_t buf[1024] = {};
+	wchar_t buf[1024]{};
 	LVITEMW lvItem{};
 	lvItem.mask = LVIF_TEXT;
 	lvItem.iItem = item;
@@ -479,8 +480,51 @@ void MyProcControl_Lite::ConfigTool::configureNow() {
 
 	// fresh install: run setup --action=install first
 	if (!serviceInstalled) {
-		int exitCode = runSetupProcess(L"install");
-		if (exitCode != 0) return;   // setup showed its own error dialog
+		wstring instPath;
+		int user = MessageBoxW(hwnd, L"Do you want to copy the product to a suitable location to install, "
+			L"or just install in place?\nWe strongly recommended you to install to a suitable location. "
+			L"Only install in place if you are developing this product.\n\nClick Yes to choose a suitable "
+			L"location, or click No to install in place, or click Cancel to cancel.",
+			L"Installer", MB_ICONQUESTION | MB_YESNOCANCEL);
+		if (user == IDCANCEL) return;
+		else if (user == IDYES) {
+			disable();
+			InputDialog idd(L"Input Install Location", 800);
+			auto r = idd.getInput<wstring>(L"Please input install location. Leave blank to choose a suitable one automatically.");
+			if (!r.has_value() || r.value().empty()) {
+				PWSTR pszPath = nullptr;
+				if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, NULL, &pszPath))) {
+					wstring commonFiles = pszPath + L"/Common Files"s;
+					instPath = commonFiles;
+					CoTaskMemFree(pszPath);
+				}
+				else {
+					MessageBoxW(hwnd, L"Sorry, but we couldn't find a suitable location to install.", 0, MB_ICONERROR);
+					enable();
+					return;
+				}
+			}
+			else {
+				instPath = r.value();
+			}
+			filesystem::path p = instPath;
+			p = p / (svc + L".exe");
+			auto buf = make_unique<WCHAR[]>(32768);
+			GetModuleFileNameW(NULL, buf.get(), 32768);
+			if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW(instPath.c_str()))
+				CreateDirectoryW(instPath.c_str(), NULL);
+			if (!CopyFileW(buf.get(), p.c_str(), FALSE)) {
+				TaskDialog(hwnd, hInst, L"Installer", L"Failed to install the product.", ErrorChecker().message().c_str(),
+					TDCBF_CANCEL_BUTTON, TD_ERROR_ICON, &user);
+				return;
+			}
+			instPath = p.wstring();
+		}
+		int exitCode = runSetupProcess(L"install", instPath.empty() ? NULL : instPath.c_str());
+		if (exitCode != 0) {
+			if (!instPath.empty()) DeleteFileW(instPath.c_str());
+			return;   // setup showed its own error dialog
+		}
 		checkServiceStatus();          // should now report installed
 		close();
 		return;
@@ -535,19 +579,20 @@ void MyProcControl_Lite::ConfigTool::uninstallNow() {
 	close();
 }
 
-int MyProcControl_Lite::ConfigTool::runSetupProcess(const std::wstring& action) {
-	wchar_t program[MAX_PATH] = {};
-	GetModuleFileNameW(NULL, program, MAX_PATH);
-
+int MyProcControl_Lite::ConfigTool::runSetupProcess(const std::wstring& action, PCWSTR app) {
+	auto buf = make_unique<WCHAR[]>(32768);
+	if (!app) {
+		GetModuleFileNameW(NULL, buf.get(), 32768);
+		app = buf.get();
+	}
 	hide();
 	//w32oop::util::RAIIHelper _([this] {show();});
 
-	wstring cmdLine = L"\"" + wstring(program) +
-		L"\" --type=setup --name=\"" + svc + L"\" --interactive --action=" + action;
+	wstring cmdLine = L"- --type=setup --name=\"" + svc + L"\" --interactive --action=" + action;
 
 	STARTUPINFOW si{ sizeof(si) };
 	PROCESS_INFORMATION pi{};
-	if (!CreateProcessW(NULL, cmdLine.data(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+	if (!CreateProcessW(app, cmdLine.data(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
 		DWORD err = GetLastError();
 		MessageBoxW(hwnd,
 			(wstring(L"Failed to start setup process: ") + ErrorChecker(err).message()).c_str(),

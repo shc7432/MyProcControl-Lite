@@ -1,5 +1,7 @@
-﻿// Microsoft Visual C++ generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
+#pragma code_page(65001)
+
 #include "resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
@@ -57,8 +59,8 @@ IDR_BIN_INJECTHELPER86  BIN                     "..\\dllcache\\XInjectHelper86.d
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -75,12 +77,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Developers"
             VALUE "FileDescription", "Process Control Server"
-            VALUE "FileVersion", "1.0.0.1"
-            VALUE "InternalName", "proctl.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2025"
-            VALUE "OriginalFilename", "proctl.exe"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "InternalName", "MyProcControlLite.exe"
+            VALUE "LegalCopyright", "Copyright (C) 2026"
+            VALUE "OriginalFilename", "MyProcControlLite.exe"
             VALUE "ProductName", "My Process Control Lite"
-            VALUE "ProductVersion", "1.0.0.1"
+            VALUE "ProductVersion", "1.0.0.0"
         END
     END
     BLOCK "VarFileInfo"

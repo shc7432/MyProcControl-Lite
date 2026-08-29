@@ -1,12 +1,54 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\configtool.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\configtool.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\configtool.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E4C97423-CCF9-4E02-AF94-1BFAF1730656}|MyProcControlLite\\MyProcControlLite.vcxproj|solutionrelative:MyProcControlLite\\configtool.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "configtool.hpp",
+              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\configtool.hpp",
+              "RelativeDocumentMoniker": "MyProcControlLite\\configtool.hpp",
+              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\configtool.hpp",
+              "RelativeToolTip": "MyProcControlLite\\configtool.hpp",
+              "ViewState": "AgIAAHQAAAAAAAAAAAASwIcAAABDAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-08-29T07:38:24.077Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "configtool.cpp",
+              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\configtool.cpp",
+              "RelativeDocumentMoniker": "MyProcControlLite\\configtool.cpp",
+              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyProcControl-Lite\\Project\\MyProcControlLite\\configtool.cpp",
+              "RelativeToolTip": "MyProcControlLite\\configtool.cpp",
+              "ViewState": "AgIAANsBAAAAEXAIVfokwO0BAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-08-29T07:33:17.824Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }
